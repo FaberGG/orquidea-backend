@@ -1,0 +1,52 @@
+
+services:
+  api:
+    build: .
+    image: orquidea-backend:latest
+    container_name: orquidea-api
+    ports:
+      - "8080:8080"
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://db:5432/orquidea_db
+      - SPRING_DATASOURCE_USERNAME=orquidea_user
+      - SPRING_DATASOURCE_PASSWORD=orquidea_pass
+      - SPRING_JPA_HIBERNATE_DDL_AUTO=update
+    depends_on:
+      - db
+    networks:
+      - orquidea-network
+
+  db:
+    image: postgres:alpine
+    container_name: orquidea-db
+    environment:
+      - POSTGRES_USER=orquidea_user
+      - POSTGRES_PASSWORD=orquidea_pass
+      - POSTGRES_DB=orquidea_db
+    volumes:
+      - db_data:/var/lib/postgresql
+    ports:
+      - "5432:5432"
+    networks:
+      - orquidea-network
+
+  pgadmin:
+    image: dpage/pgadmin4
+    container_name: orquidea-pgadmin
+    environment:
+      - PGADMIN_DEFAULT_EMAIL=admin@orquidea.local
+      - PGADMIN_DEFAULT_PASSWORD=admin
+    ports:
+      - "8081:80"
+    depends_on:
+      - db
+    networks:
+      - orquidea-network
+
+volumes:
+  db_data:
+  pgadmin_data:
+
+networks:
+  orquidea-network:
+    driver: bridge
