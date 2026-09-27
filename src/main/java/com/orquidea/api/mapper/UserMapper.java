@@ -4,7 +4,9 @@ import com.orquidea.api.dto.request.RegisterUserRequest;
 import com.orquidea.api.dto.response.RegisterUserResponse;
 import com.orquidea.api.model.User;
 import org.mapstruct.control.MappingControl;
+import org.springframework.stereotype.Component;
 
+@Component
 public class UserMapper {
 
     public User toEntity(RegisterUserRequest request){
