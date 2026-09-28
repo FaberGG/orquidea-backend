@@ -34,3 +34,4 @@ build/
 
 ### Variables locales ###
 .env
+/GitIgnore/
