@@ -13,8 +13,8 @@ import lombok.NoArgsConstructor;
 import org.springframework.web.multipart.MultipartFile;
 
 /**
- * Formulario multipart para crear una ficha (HU-7): un campo de texto por atributo más el archivo "foto".
- * Todos los campos son obligatorios.
+ * Formulario multipart para crear (HU-7) o editar (HU-8) una ficha: un campo de texto por atributo
+ * más el archivo "foto". Todos los campos de texto son obligatorios en ambos casos.
  */
 @Data
 @Builder
@@ -68,7 +68,12 @@ public class SolicitudFichaTaxonomica {
     @Schema(description = "Categoría UICN", example = "LC")
     private EstadoConservacion estadoConservacion;
 
-    @NotNull(message = MENSAJE_OBLIGATORIOS)
-    @Schema(description = "Foto de la especie, jpg o png, máximo 10 MB", type = "string", format = "binary")
+    @NotNull(message = MENSAJE_OBLIGATORIOS, groups = Creacion.class)
+    @Schema(description = "Foto de la especie, jpg o png, máximo 10 MB. Obligatoria al crear; al editar, "
+            + "si no se envía (o llega vacía) se conserva la actual", type = "string", format = "binary")
     private MultipartFile foto;
+
+    /** Reglas que solo aplican al crear (HU-7); al editar (HU-8) la foto es opcional. */
+    public interface Creacion {
+    }
 }

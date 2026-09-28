@@ -17,6 +17,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.UUID;
 
 /**
@@ -82,13 +83,18 @@ public class FichaTaxonomica {
 
     @PrePersist
     void alCrear() {
-        Instant ahora = Instant.now();
+        Instant ahora = ahora();
         fechaCreacion = ahora;
         fechaActualizacion = ahora;
     }
 
     @PreUpdate
     void alActualizar() {
-        fechaActualizacion = Instant.now();
+        fechaActualizacion = ahora();
+    }
+
+    /** PostgreSQL guarda microsegundos; así la respuesta coincide con lo que devolverá una consulta posterior. */
+    private static Instant ahora() {
+        return Instant.now().truncatedTo(ChronoUnit.MICROS);
     }
 }

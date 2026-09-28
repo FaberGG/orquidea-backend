@@ -10,6 +10,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.web.servlet.ResultActions;
 import org.springframework.test.web.servlet.request.MockMultipartHttpServletRequestBuilder;
@@ -225,10 +226,156 @@ class FichaTaxonomicaControladorTest extends PruebaIntegracionBase {
         esperarError(mockMvc.perform(get(RUTA_FICHAS + "/no-es-un-uuid")), 404, "El recurso solicitado no existe.");
     }
 
+    // HU-8: edición
+
+    @Test
+    @DisplayName("HU-8 escenario 1: edición exitosa sin enviar foto conserva la foto actual")
+    void edicionExitosaSinFoto() throws Exception {
+        String nombreCientifico = nombreCientificoUnico();
+        String creada = crearFicha(nombreCientifico);
+        String id = JsonPath.read(creada, "$.id");
+        Map<String, String> datos = formulario(nombreCientifico);
+        datos.put("nombreComun", "Azulejo común");
+        datos.put("alimentacion", "Principalmente frutos");
+        datos.put("estadoConservacion", "NT");
+
+        String editada = editar(tokenAdministrador, id, datos, null)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(id))
+                .andExpect(jsonPath("$.nombreComun").value("Azulejo común"))
+                .andExpect(jsonPath("$.alimentacion").value("Principalmente frutos"))
+                .andExpect(jsonPath("$.estadoConservacion").value("NT"))
+                .andExpect(jsonPath("$.urlFoto").value((String) JsonPath.read(creada, "$.urlFoto")))
+                .andExpect(jsonPath("$.fechaCreacion").value((String) JsonPath.read(creada, "$.fechaCreacion")))
+                .andReturn().getResponse().getContentAsString();
+        assertThat((String) JsonPath.read(editada, "$.fechaActualizacion"))
+                .isNotEqualTo(JsonPath.read(creada, "$.fechaActualizacion"));
+
+        mockMvc.perform(get(RUTA_FICHAS + "/" + id))
+                .andExpect(jsonPath("$.nombreComun").value("Azulejo común"));
+    }
+
+    @Test
+    @DisplayName("HU-8 escenario 1: un campo de archivo vacío (así lo envía el navegador) conserva la foto")
+    void edicionConCampoDeFotoVacio() throws Exception {
+        String nombreCientifico = nombreCientificoUnico();
+        String creada = crearFicha(nombreCientifico);
+        MockMultipartFile sinSeleccionar = new MockMultipartFile("foto", "", "application/octet-stream", new byte[0]);
+
+        editar(tokenAdministrador, JsonPath.read(creada, "$.id"), formulario(nombreCientifico), sinSeleccionar)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.urlFoto").value((String) JsonPath.read(creada, "$.urlFoto")));
+    }
+
+    @Test
+    @DisplayName("HU-8 escenario 1: una foto nueva reemplaza a la anterior, que se borra del almacenamiento")
+    void edicionConFotoNueva() throws Exception {
+        String nombreCientifico = nombreCientificoUnico();
+        String creada = crearFicha(nombreCientifico);
+        String urlAnterior = JsonPath.read(creada, "$.urlFoto");
+        MockMultipartFile fotoJpg = new MockMultipartFile("foto", "nueva.jpg", "image/jpeg", jpeg);
+
+        String editada = editar(tokenAdministrador, JsonPath.read(creada, "$.id"), formulario(nombreCientifico), fotoJpg)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.urlFoto", endsWith(".jpg")))
+                .andReturn().getResponse().getContentAsString();
+
+        assertThat(estadoHttp(JsonPath.read(editada, "$.urlFoto"))).isEqualTo(200);
+        assertThat(estadoHttp(urlAnterior)).isEqualTo(404);
+    }
+
+    @Test
+    @DisplayName("HU-8: el superadministrador también puede editar (HU-6)")
+    void edicionComoSuperadministrador() throws Exception {
+        String nombreCientifico = nombreCientificoUnico();
+        String id = JsonPath.read(crearFicha(nombreCientifico), "$.id");
+        String token = obtenerToken(CORREO_SUPERADMIN, CONTRASENA_SUPERADMIN);
+
+        editar(token, id, formulario(nombreCientifico), null).andExpect(status().isOk());
+    }
+
+    @Test
+    @DisplayName("HU-8: un campo obligatorio vacío no modifica la ficha")
+    void edicionConCampoFaltante() throws Exception {
+        String nombreCientifico = nombreCientificoUnico();
+        String id = JsonPath.read(crearFicha(nombreCientifico), "$.id");
+        Map<String, String> datos = formulario(nombreCientifico);
+        datos.put("nombreComun", "Nombre que no debe guardarse");
+        datos.remove("familia");
+
+        esperarError(editar(tokenAdministrador, id, datos, null), 400, MENSAJE_OBLIGATORIOS);
+        mockMvc.perform(get(RUTA_FICHAS + "/" + id))
+                .andExpect(jsonPath("$.nombreComun").value("Azulejo"))
+                .andExpect(jsonPath("$.familia").value("Thraupidae"));
+    }
+
+    @Test
+    @DisplayName("HU-8: una foto con formato no permitido no modifica la ficha ni su foto")
+    void edicionConFotoInvalida() throws Exception {
+        String nombreCientifico = nombreCientificoUnico();
+        String creada = crearFicha(nombreCientifico);
+        String id = JsonPath.read(creada, "$.id");
+        MockMultipartFile gif = new MockMultipartFile("foto", "foto.gif", "image/gif", imagen("gif"));
+
+        esperarError(editar(tokenAdministrador, id, formulario(nombreCientifico), gif), 400, MENSAJE_FORMATO);
+        mockMvc.perform(get(RUTA_FICHAS + "/" + id))
+                .andExpect(jsonPath("$.urlFoto").value((String) JsonPath.read(creada, "$.urlFoto")));
+    }
+
+    @Test
+    @DisplayName("HU-8: no se puede usar el nombre científico de otra ficha")
+    void edicionConNombreDeOtraFicha() throws Exception {
+        String nombreOtra = nombreCientificoUnico();
+        crearFicha(nombreOtra);
+        String nombreCientifico = nombreCientificoUnico();
+        String id = JsonPath.read(crearFicha(nombreCientifico), "$.id");
+
+        esperarError(editar(tokenAdministrador, id, formulario(nombreOtra), null), 409,
+                "Ya existe una ficha con el nombre científico '" + nombreOtra + "'.");
+    }
+
+    @Test
+    @DisplayName("HU-8: la ficha puede conservar su propio nombre científico, incluso cambiando mayúsculas")
+    void edicionConservandoSuNombre() throws Exception {
+        String nombreCientifico = nombreCientificoUnico();
+        String id = JsonPath.read(crearFicha(nombreCientifico), "$.id");
+
+        editar(tokenAdministrador, id, formulario(nombreCientifico.toUpperCase()), null)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.nombreCientifico").value(nombreCientifico.toUpperCase()));
+    }
+
+    @Test
+    @DisplayName("HU-8: editar una ficha que no existe responde 404")
+    void edicionDeFichaInexistente() throws Exception {
+        esperarError(editar(tokenAdministrador, UUID.randomUUID().toString(), formulario(nombreCientificoUnico()), null),
+                404, "La ficha taxonómica solicitada no existe.");
+    }
+
+    @Test
+    @DisplayName("HU-8: solo administradores pueden editar")
+    void edicionSinPermisos() throws Exception {
+        String nombreCientifico = nombreCientificoUnico();
+        String id = JsonPath.read(crearFicha(nombreCientifico), "$.id");
+
+        esperarError(editar(tokenDeUsuarioNuevo(Rol.USUARIO_REGISTRADO), id, formulario(nombreCientifico), null), 403,
+                "No tiene permisos para realizar esta acción.");
+        esperarError(editar(null, id, formulario(nombreCientifico), null), 401,
+                "Debe iniciar sesión para acceder a este recurso.");
+    }
+
     // Utilidades
 
     private ResultActions crear(String token, Map<String, String> datos, MockMultipartFile foto) throws Exception {
-        MockMultipartHttpServletRequestBuilder solicitud = multipart(RUTA_FICHAS);
+        return enviar(multipart(RUTA_FICHAS), token, datos, foto);
+    }
+
+    private ResultActions editar(String token, String id, Map<String, String> datos, MockMultipartFile foto) throws Exception {
+        return enviar(multipart(HttpMethod.PUT, RUTA_FICHAS + "/" + id), token, datos, foto);
+    }
+
+    private ResultActions enviar(MockMultipartHttpServletRequestBuilder solicitud, String token,
+                                 Map<String, String> datos, MockMultipartFile foto) throws Exception {
         if (foto != null) {
             solicitud.file(foto);
         }
@@ -237,6 +384,19 @@ class FichaTaxonomicaControladorTest extends PruebaIntegracionBase {
             solicitud.header(HttpHeaders.AUTHORIZATION, "Bearer " + token);
         }
         return mockMvc.perform(solicitud);
+    }
+
+    /** Crea una ficha válida con foto png como administrador y devuelve la respuesta JSON. */
+    private String crearFicha(String nombreCientifico) throws Exception {
+        return crear(tokenAdministrador, formulario(nombreCientifico), fotoPng())
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+    }
+
+    private static int estadoHttp(String url) throws Exception {
+        return HttpClient.newHttpClient()
+                .send(HttpRequest.newBuilder(URI.create(url)).build(), HttpResponse.BodyHandlers.discarding())
+                .statusCode();
     }
 
     private static void esperarError(ResultActions resultado, int estado, String mensaje) throws Exception {
