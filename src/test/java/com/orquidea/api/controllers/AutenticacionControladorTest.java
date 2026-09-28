@@ -1,22 +1,15 @@
 package com.orquidea.api.controllers;
 
-import com.jayway.jsonpath.JsonPath;
 import com.orquidea.api.PruebaIntegracionBase;
 import com.orquidea.api.model.Rol;
 import com.orquidea.api.model.Usuario;
-import com.orquidea.api.repository.UsuarioRepositorio;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
-import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
-
-import java.util.UUID;
 
 import static org.hamcrest.Matchers.emptyOrNullString;
 import static org.hamcrest.Matchers.not;
@@ -27,19 +20,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 class AutenticacionControladorTest extends PruebaIntegracionBase {
 
-    private static final String RUTA_INICIAR_SESION = "/api/autenticacion/iniciar-sesion";
     private static final String RUTA_YO = "/api/autenticacion/yo";
     private static final String MENSAJE_CREDENCIALES = "Correo o contraseña incorrectos.";
     private static final String MENSAJE_CAMPOS = "Ambos campos son obligatorios.";
-
-    @Autowired
-    private MockMvc mockMvc;
-
-    @Autowired
-    private UsuarioRepositorio usuarioRepositorio;
-
-    @Autowired
-    private PasswordEncoder codificadorContrasenas;
 
     // Escenario 1: ingreso exitoso
 
@@ -170,34 +153,10 @@ class AutenticacionControladorTest extends PruebaIntegracionBase {
 
     // Utilidades
 
-    private ResultActions iniciarSesion(String correo, String contrasena) throws Exception {
-        String cuerpo = "{\"correo\":\"%s\",\"contrasena\":\"%s\"}".formatted(correo, contrasena);
-        return mockMvc.perform(post(RUTA_INICIAR_SESION).contentType(MediaType.APPLICATION_JSON).content(cuerpo));
-    }
-
     private void esperarCredencialesIncorrectas(ResultActions resultado) throws Exception {
         resultado.andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.estado").value(401))
                 .andExpect(jsonPath("$.mensaje").value(MENSAJE_CREDENCIALES))
                 .andExpect(jsonPath("$.token").doesNotExist());
-    }
-
-    private String obtenerToken(String correo, String contrasena) throws Exception {
-        String respuesta = iniciarSesion(correo, contrasena)
-                .andExpect(status().isOk())
-                .andReturn().getResponse().getContentAsString();
-        return JsonPath.read(respuesta, "$.token");
-    }
-
-    private String crearUsuario(Rol rol, String contrasena, boolean habilitado) {
-        String correo = "usuario-" + UUID.randomUUID() + "@prueba.local";
-        usuarioRepositorio.save(Usuario.builder()
-                .nombreCompleto("Usuario de prueba")
-                .correo(correo)
-                .contrasenaHash(codificadorContrasenas.encode(contrasena))
-                .rol(rol)
-                .habilitado(habilitado)
-                .build());
-        return correo;
     }
 }

@@ -1,8 +1,10 @@
 package com.orquidea.api.exception;
 
+import com.orquidea.api.config.PropiedadesStorage;
 import com.orquidea.api.dto.RespuestaError;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
@@ -14,6 +16,9 @@ import org.springframework.web.ErrorResponse;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.util.unit.DataSize;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
 
 import java.time.Instant;
 
@@ -21,20 +26,80 @@ import java.time.Instant;
 @RestControllerAdvice
 public class ManejadorGlobalExcepciones {
 
+    private final DataSize tamanoMaximoImagen;
+
+    public ManejadorGlobalExcepciones(PropiedadesStorage propiedadesStorage) {
+        this.tamanoMaximoImagen = propiedadesStorage.tamanoMaximoImagen();
+    }
+
     @ExceptionHandler(CredencialesInvalidasExcepcion.class)
     public ResponseEntity<RespuestaError> manejarCredencialesInvalidas(
             CredencialesInvalidasExcepcion ex, HttpServletRequest request) {
         return construir(HttpStatus.UNAUTHORIZED, ex.getMessage(), request);
     }
 
+    /**
+     * Prioriza los mensajes de las anotaciones (@NotBlank, @Size...) sobre los errores de conversión,
+     * que Spring genera en inglés; para estos se arma un mensaje propio con el nombre del campo.
+     */
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<RespuestaError> manejarValidacion(
             MethodArgumentNotValidException ex, HttpServletRequest request) {
-        String mensaje = ex.getBindingResult().getFieldErrors().stream()
+        var errores = ex.getBindingResult().getFieldErrors();
+        String mensaje = errores.stream()
+                .filter(error -> !error.isBindingFailure())
                 .map(FieldError::getDefaultMessage)
                 .findFirst()
+                .or(() -> errores.stream()
+                        .map(error -> "El valor del campo '" + error.getField() + "' no es válido.")
+                        .findFirst())
                 .orElse("La solicitud contiene datos inválidos.");
         return construir(HttpStatus.BAD_REQUEST, mensaje, request);
+    }
+
+    @ExceptionHandler({SolicitudInvalidaExcepcion.class, FormatoImagenInvalidoExcepcion.class})
+    public ResponseEntity<RespuestaError> manejarSolicitudInvalida(RuntimeException ex, HttpServletRequest request) {
+        return construir(HttpStatus.BAD_REQUEST, ex.getMessage(), request);
+    }
+
+    @ExceptionHandler(ImagenDemasiadoGrandeExcepcion.class)
+    public ResponseEntity<RespuestaError> manejarImagenDemasiadoGrande(
+            ImagenDemasiadoGrandeExcepcion ex, HttpServletRequest request) {
+        return construir(HttpStatus.CONTENT_TOO_LARGE, ex.getMessage(), request);
+    }
+
+    /** El archivo supera spring.servlet.multipart.max-file-size antes de llegar al controlador. */
+    @ExceptionHandler(MaxUploadSizeExceededException.class)
+    public ResponseEntity<RespuestaError> manejarSubidaDemasiadoGrande(
+            MaxUploadSizeExceededException ex, HttpServletRequest request) {
+        return construir(HttpStatus.CONTENT_TOO_LARGE,
+                "La imagen supera el tamaño máximo permitido de " + tamanoMaximoImagen.toMegabytes() + " MB.", request);
+    }
+
+    @ExceptionHandler(RecursoNoEncontradoExcepcion.class)
+    public ResponseEntity<RespuestaError> manejarNoEncontrado(
+            RecursoNoEncontradoExcepcion ex, HttpServletRequest request) {
+        return construir(HttpStatus.NOT_FOUND, ex.getMessage(), request);
+    }
+
+    @ExceptionHandler(RecursoDuplicadoExcepcion.class)
+    public ResponseEntity<RespuestaError> manejarDuplicado(RecursoDuplicadoExcepcion ex, HttpServletRequest request) {
+        return construir(HttpStatus.CONFLICT, ex.getMessage(), request);
+    }
+
+    /** Respaldo de las validaciones de duplicados cuando dos peticiones llegan a la vez. */
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    public ResponseEntity<RespuestaError> manejarIntegridad(
+            DataIntegrityViolationException ex, HttpServletRequest request) {
+        log.warn("Violación de integridad en {} {}", request.getMethod(), request.getRequestURI(), ex);
+        return construir(HttpStatus.CONFLICT, "El registro entra en conflicto con uno existente.", request);
+    }
+
+    /** El id de la ruta no tiene formato UUID: para el cliente es un recurso que no existe. */
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+    public ResponseEntity<RespuestaError> manejarParametroInvalido(
+            MethodArgumentTypeMismatchException ex, HttpServletRequest request) {
+        return construir(HttpStatus.NOT_FOUND, "El recurso solicitado no existe.", request);
     }
 
     @ExceptionHandler(HttpMessageNotReadableException.class)

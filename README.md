@@ -59,10 +59,10 @@ cp .env.example .env
 
 Luego, una de dos opciones:
 
-- **Desarrollo desde el IDE (recomendado):** ejecutar `OrquideaBackendApplication`. Spring Boot levanta automáticamente `db` y `pgadmin` con Docker Compose y lee el `.env`.
+- **Desarrollo desde el IDE (recomendado):** ejecutar `OrquideaBackendApplication`. Spring Boot levanta automáticamente `db`, `storage` y `pgadmin` con Docker Compose y lee el `.env`.
 - **Todo en contenedores:** `docker compose --profile app up -d --build`
 
-`docker compose up -d` sin perfil levanta solo `db` y `pgadmin`.
+`docker compose up -d` sin perfil levanta solo `db`, `storage` y `pgadmin`.
 
 ### Servicios y URLs locales esperadas
 
@@ -72,8 +72,13 @@ Luego, una de dos opciones:
 | Swagger UI (springdoc) | http://localhost:8080/swagger-ui.html |
 | pgAdmin | http://localhost:8081 (credenciales: `PGADMIN_CORREO` / `PGADMIN_CONTRASENA` del `.env`) |
 | PostgreSQL | `localhost:5432` (credenciales `POSTGRES_*` del `.env`) |
+| Almacenamiento S3 (RustFS) | API `http://localhost:9000`, consola http://localhost:9001 (credenciales `STORAGE_ACCESS_KEY` / `STORAGE_SECRET_KEY`) |
 
 Al arrancar se crea el primer **superadministrador** con `SUPERADMIN_CORREO` / `SUPERADMIN_CONTRASENA`, solo si todavía no existe ninguno.
+
+### Almacenamiento de archivos
+
+Las fotos se suben a un almacenamiento compatible con S3. En desarrollo es **RustFS** (contenedor `storage`), que reemplaza a Cloudflare R2; al arrancar, la API crea el bucket con lectura pública. Para usar R2 basta con cambiar las variables `STORAGE_*` del `.env` (ver comentarios en `.env.example`) y poner `STORAGE_CREAR_BUCKET=false`: el código es el mismo. En la base de datos se guarda la clave del objeto, no la URL, así que cambiar de proveedor no requiere migrar datos.
 
 ### Base de datos
 
@@ -85,7 +90,7 @@ El esquema se versiona con **Flyway** en `src/main/resources/db/migration` (`V<n
 ./mvnw verify
 ```
 
-Las pruebas de integración usan **Testcontainers** (PostgreSQL real), así que Docker debe estar corriendo.
+Las pruebas de integración usan **Testcontainers** (PostgreSQL y RustFS reales), así que Docker debe estar corriendo.
 
 ## Convención de código y commits
 

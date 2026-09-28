@@ -4,6 +4,8 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
+import org.springframework.security.access.hierarchicalroles.RoleHierarchy;
+import org.springframework.security.access.hierarchicalroles.RoleHierarchyImpl;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -46,6 +48,7 @@ public class ConfiguracionSeguridad {
                 .authorizeHttpRequests(rutas -> rutas
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/autenticacion/iniciar-sesion").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/fichas-taxonomicas", "/api/fichas-taxonomicas/**").permitAll()
                         .requestMatchers(RUTAS_PUBLICAS).permitAll()
                         .anyRequest().authenticated())
                 .exceptionHandling(excepciones -> excepciones
@@ -55,6 +58,15 @@ public class ConfiguracionSeguridad {
                                 resolutorExcepciones.resolveException(request, response, null, ex)))
                 .addFilterBefore(new FiltroAutenticacionJwt(jwtServicio), UsernamePasswordAuthenticationFilter.class)
                 .build();
+    }
+
+    /**
+     * HU-6: el superadministrador hereda todos los permisos de administrador,
+     * así basta con @PreAuthorize("hasRole('ADMINISTRADOR')").
+     */
+    @Bean
+    public static RoleHierarchy jerarquiaRoles() {
+        return RoleHierarchyImpl.fromHierarchy("ROLE_SUPERADMINISTRADOR > ROLE_ADMINISTRADOR");
     }
 
     @Bean
