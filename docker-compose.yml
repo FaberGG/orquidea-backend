@@ -23,7 +23,7 @@ services:
 
   orquidea-api:
     build:
-      context: ./orquidea-backend
+      context: .
       dockerfile: Dockerfile
       network: host
     container_name: orquidea-springboot-api
