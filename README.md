@@ -51,25 +51,55 @@ Clonar el repositorio:
 git clone https://github.com/FaberGG/orquidea-backend
 ```
 
-Levantar el entorno con Docker Compose:
+Crear el archivo de variables locales (no se sube al repositorio) y ajustar valores si hace falta:
 
 ```bash
-docker compose up -d
+cp .env.example .env
 ```
+
+Luego, una de dos opciones:
+
+- **Desarrollo desde el IDE (recomendado):** ejecutar `OrquideaBackendApplication`. Spring Boot levanta automáticamente `db` y `pgadmin` con Docker Compose y lee el `.env`.
+- **Todo en contenedores:** `docker compose --profile app up -d --build`
+
+`docker compose up -d` sin perfil levanta solo `db` y `pgadmin`.
 
 ### Servicios y URLs locales esperadas
 
 | Servicio | URL / conexión |
 |---|---|
-| API | http://localhost:8080 |
-| Swagger UI (springdoc) | http://localhost:8080/swagger-ui.html (o `/swagger-ui/index.html`) |
-| pgAdmin | http://localhost:8081 (credenciales: `admin@orquidea.local` / `admin`) |
-| PostgreSQL | `localhost:5432` (user: `orquidea_user`, password: `orquidea_pass`, db: `orquidea_db`) |
+| API | http://localhost:8080 (o el `PUERTO_API` de tu `.env`) |
+| Swagger UI (springdoc) | http://localhost:8080/swagger-ui.html |
+| pgAdmin | http://localhost:8081 (credenciales: `PGADMIN_CORREO` / `PGADMIN_CONTRASENA` del `.env`) |
+| PostgreSQL | `localhost:5432` (credenciales `POSTGRES_*` del `.env`) |
 
-## Notas finales
+Al arrancar se crea el primer **superadministrador** con `SUPERADMIN_CORREO` / `SUPERADMIN_CONTRASENA`, solo si todavía no existe ninguno.
 
-- Esta estructura inicial es solo esqueleto y documentación; **no incluye código Java por ahora**.
-- Próximos pasos recomendados:
-   - Añadir `pom.xml` con dependencias (`spring-boot-starter-web`, `spring-boot-starter-data-jpa`, `springdoc-openapi`, `lombok`, driver de Postgres).
-   - Implementar entidades conforme a DwC.
-   - Implementar el `GlobalExceptionHandler`.
+### Base de datos
+
+El esquema se versiona con **Flyway** en `src/main/resources/db/migration` (`V<n>__descripcion.sql`). Hibernate solo valida (`ddl-auto: validate`). Nunca se edita una migración ya subida: los cambios van en una nueva.
+
+### Pruebas
+
+```bash
+./mvnw verify
+```
+
+Las pruebas de integración usan **Testcontainers** (PostgreSQL real), así que Docker debe estar corriendo.
+
+## Convención de código y commits
+
+- Código (clases, métodos, variables, rutas, JSON) en **español**, sin tildes ni ñ en identificadores (`contrasena`). Los datos biológicos siguen Darwin Core.
+- Ramas: `feature/hu-<n>-<descripcion>` o `fix/<descripcion>`, creadas desde `dev`.
+- Commits: `<tipo>(<alcance>): <descripción en minúscula>`, con el alcance opcional (la HU o el módulo).
+
+| Tipo | Uso |
+|---|---|
+| `agrega` | Funcionalidad nueva |
+| `corrige` | Corrección de errores |
+| `mejora` | Refactor o ajuste sin cambiar el comportamiento |
+| `pruebas` | Solo pruebas |
+| `docs` | Documentación |
+| `config` | Dependencias, Docker, build, CI |
+
+Ejemplos: `agrega(HU-1): inicio de sesión con JWT`, `corrige(auth): mensaje de campos vacíos`, `config: actualiza springdoc`.

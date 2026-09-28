@@ -1,0 +1,33 @@
+package com.orquidea.api.dto;
+
+import com.orquidea.api.model.Rol;
+import io.swagger.v3.oas.annotations.media.Schema;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+import java.util.UUID;
+
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+@Schema(description = "Datos básicos del usuario con sesión iniciada")
+public class UsuarioAutenticadoDto {
+
+    @Schema(description = "Identificador del usuario", example = "3f6c1a52-7a1e-4c5b-9c1d-2b8f0e4a9d10")
+    private UUID id;
+
+    @Schema(description = "Nombre completo", example = "María Pérez")
+    private String nombreCompleto;
+
+    @Schema(description = "Correo", example = "admin@orquidea.local")
+    private String correo;
+
+    @Schema(description = "Teléfono de contacto", example = "3001234567", nullable = true)
+    private String telefono;
+
+    @Schema(description = "Rol del usuario; define las opciones habilitadas en la aplicación", example = "ADMINISTRADOR")
+    private Rol rol;
+}
