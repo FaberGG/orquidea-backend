@@ -19,8 +19,11 @@ public class UsuarioAutenticadoDto {
     @Schema(description = "Identificador del usuario", example = "3f6c1a52-7a1e-4c5b-9c1d-2b8f0e4a9d10")
     private UUID id;
 
-    @Schema(description = "Nombre completo", example = "María Pérez")
-    private String nombreCompleto;
+    @Schema(description = "Nombre", example = "María")
+    private String nombre;
+
+    @Schema(description = "Apellido", example = "Pérez")
+    private String apellido;
 
     @Schema(description = "Correo", example = "admin@orquidea.local")
     private String correo;

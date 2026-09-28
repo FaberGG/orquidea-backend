@@ -35,7 +35,8 @@ class AutenticacionControladorTest extends PruebaIntegracionBase {
                 .andExpect(jsonPath("$.tipo").value("Bearer"))
                 .andExpect(jsonPath("$.expiraEnSegundos").value(3600))
                 .andExpect(jsonPath("$.usuario.correo").value(CORREO_SUPERADMIN))
-                .andExpect(jsonPath("$.usuario.nombreCompleto").value("Super Pruebas"))
+                .andExpect(jsonPath("$.usuario.nombre").value("Super"))
+                .andExpect(jsonPath("$.usuario.apellido").value("Pruebas"))
                 .andExpect(jsonPath("$.usuario.rol").value("SUPERADMINISTRADOR"))
                 .andExpect(jsonPath("$.usuario.contrasenaHash").doesNotExist());
     }

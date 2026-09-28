@@ -31,8 +31,11 @@ public class Usuario {
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
-    @Column(name = "nombre_completo", nullable = false, length = 150)
-    private String nombreCompleto;
+    @Column(nullable = false, length = 100)
+    private String nombre;
+
+    @Column(nullable = false, length = 100)
+    private String apellido;
 
     /** Siempre se guarda en minúsculas y sin espacios alrededor. */
     @Column(nullable = false, unique = true, length = 254)

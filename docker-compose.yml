@@ -18,7 +18,8 @@ services:
       - SPRING_DATASOURCE_PASSWORD=${POSTGRES_PASSWORD}
       - JWT_SECRETO=${JWT_SECRETO}
       - JWT_EXPIRACION=${JWT_EXPIRACION:-8h}
-      - SUPERADMIN_NOMBRE=${SUPERADMIN_NOMBRE:-Superadministrador}
+      - SUPERADMIN_NOMBRE=${SUPERADMIN_NOMBRE:-Super}
+      - SUPERADMIN_APELLIDO=${SUPERADMIN_APELLIDO:-Administrador}
       - SUPERADMIN_CORREO=${SUPERADMIN_CORREO}
       - SUPERADMIN_CONTRASENA=${SUPERADMIN_CONTRASENA}
       # Dentro de la red de Docker la API habla con "storage"; el navegador sigue usando localhost

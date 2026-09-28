@@ -22,7 +22,7 @@ public class UsuarioServicio {
      * No modifica cuentas existentes, así que es seguro ejecutarlo en cada arranque.
      */
     @Transactional
-    public void asegurarSuperadministradorInicial(String nombreCompleto, String correo, String contrasena) {
+    public void asegurarSuperadministradorInicial(String nombre, String apellido, String correo, String contrasena) {
         if (usuarioRepositorio.existsByRol(Rol.SUPERADMINISTRADOR)) {
             return;
         }
@@ -32,7 +32,8 @@ public class UsuarioServicio {
             return;
         }
         usuarioRepositorio.save(Usuario.builder()
-                .nombreCompleto(nombreCompleto)
+                .nombre(nombre)
+                .apellido(apellido)
                 .correo(correoNormalizado)
                 .contrasenaHash(codificadorContrasenas.encode(contrasena))
                 .rol(Rol.SUPERADMINISTRADOR)

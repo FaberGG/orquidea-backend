@@ -25,7 +25,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @SpringBootTest(properties = {
         "app.jwt.secreto=secreto-de-pruebas-con-mas-de-32-caracteres",
         "app.jwt.expiracion=1h",
-        "app.superadministrador.nombre=Super Pruebas",
+        "app.superadministrador.nombre=Super",
+        "app.superadministrador.apellido=Pruebas",
         "app.superadministrador.correo=" + PruebaIntegracionBase.CORREO_SUPERADMIN,
         "app.superadministrador.contrasena=" + PruebaIntegracionBase.CONTRASENA_SUPERADMIN
 })
@@ -62,7 +63,8 @@ public abstract class PruebaIntegracionBase {
     protected String crearUsuario(Rol rol, String contrasena, boolean habilitado) {
         String correo = "usuario-" + UUID.randomUUID() + "@prueba.local";
         usuarioRepositorio.save(Usuario.builder()
-                .nombreCompleto("Usuario de prueba")
+                .nombre("Usuario")
+                .apellido("De Prueba")
                 .correo(correo)
                 .contrasenaHash(codificadorContrasenas.encode(contrasena))
                 .rol(rol)

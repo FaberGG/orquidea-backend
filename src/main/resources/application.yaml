@@ -47,6 +47,7 @@ app:
     crear-bucket: ${STORAGE_CREAR_BUCKET:true}
     tamano-maximo-imagen: 10MB
   superadministrador:
-    nombre: ${SUPERADMIN_NOMBRE:Superadministrador}
+    nombre: ${SUPERADMIN_NOMBRE:Super}
+    apellido: ${SUPERADMIN_APELLIDO:Administrador}
     correo: ${SUPERADMIN_CORREO:}
     contrasena: ${SUPERADMIN_CONTRASENA:}

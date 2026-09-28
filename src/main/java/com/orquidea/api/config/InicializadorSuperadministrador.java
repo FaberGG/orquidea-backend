@@ -12,7 +12,8 @@ import org.springframework.stereotype.Component;
 @RequiredArgsConstructor
 public class InicializadorSuperadministrador implements ApplicationRunner {
 
-    private static final String NOMBRE_POR_DEFECTO = "Superadministrador";
+    private static final String NOMBRE_POR_DEFECTO = "Super";
+    private static final String APELLIDO_POR_DEFECTO = "Administrador";
 
     private final PropiedadesSuperadministrador propiedades;
     private final UsuarioServicio usuarioServicio;
@@ -23,9 +24,14 @@ public class InicializadorSuperadministrador implements ApplicationRunner {
             log.warn("SUPERADMIN_CORREO / SUPERADMIN_CONTRASENA no configurados: no se creará el superadministrador inicial");
             return;
         }
-        String nombre = propiedades.nombre() == null || propiedades.nombre().isBlank()
-                ? NOMBRE_POR_DEFECTO
-                : propiedades.nombre();
-        usuarioServicio.asegurarSuperadministradorInicial(nombre, propiedades.correo(), propiedades.contrasena());
+        usuarioServicio.asegurarSuperadministradorInicial(
+                valorODefecto(propiedades.nombre(), NOMBRE_POR_DEFECTO),
+                valorODefecto(propiedades.apellido(), APELLIDO_POR_DEFECTO),
+                propiedades.correo(),
+                propiedades.contrasena());
+    }
+
+    private static String valorODefecto(String valor, String porDefecto) {
+        return valor == null || valor.isBlank() ? porDefecto : valor.trim();
     }
 }
