@@ -1,51 +1,53 @@
+version: '3.8'
 
 services:
-  api:
-    build: .
-    image: orquidea-backend:latest
-    container_name: orquidea-api
-    ports:
-      - "8080:8080"
+  orquidea-db:
+    image: postgres:16-alpine
+    container_name: orquidea-postgres-db
+    restart: always
     environment:
-      - SPRING_DATASOURCE_URL=jdbc:postgresql://db:5432/orquidea_db
-      - SPRING_DATASOURCE_USERNAME=orquidea_user
-      - SPRING_DATASOURCE_PASSWORD=orquidea_pass
-      - SPRING_JPA_HIBERNATE_DDL_AUTO=update
-    depends_on:
-      - db
-    networks:
-      - orquidea-network
-
-  db:
-    image: postgres:alpine
-    container_name: orquidea-db
-    environment:
-      - POSTGRES_USER=orquidea_user
-      - POSTGRES_PASSWORD=orquidea_pass
-      - POSTGRES_DB=orquidea_db
-    volumes:
-      - db_data:/var/lib/postgresql
+      POSTGRES_DB: orquidea_db
+      POSTGRES_USER: orquidea_user
+      POSTGRES_PASSWORD: orquidea_pass
     ports:
       - "5432:5432"
+    volumes:
+      - postgres_orquidea_data:/var/lib/postgresql/data
     networks:
       - orquidea-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U orquidea_user -d orquidea_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
-  pgadmin:
-    image: dpage/pgadmin4
-    container_name: orquidea-pgadmin
-    environment:
-      - PGADMIN_DEFAULT_EMAIL=admin@example.com
-      - PGADMIN_DEFAULT_PASSWORD=admin
+  orquidea-api:
+    build:
+      context: ./orquidea-backend
+      dockerfile: Dockerfile
+      network: host
+    container_name: orquidea-springboot-api
+    restart: always
     ports:
-      - "8081:80"
+      - "8080:8080"
+    dns:
+      - 8.8.8.8
+    environment:
+      - SERVER_PORT=8080
+      - DB_URL=jdbc:postgresql://orquidea-db:5432/orquidea_db
+      - DB_USERNAME=orquidea_user
+      - DB_PASSWORD=orquidea_pass
+      - DB_DDL_AUTO=update
+      - DB_SHOW_SQL=true
+      - DB_FORMAT_SQL=true
     depends_on:
-      - db
+      orquidea-db:
+        condition: service_healthy
     networks:
       - orquidea-network
 
 volumes:
-  db_data:
-  pgadmin_data:
+  postgres_orquidea_data:
 
 networks:
   orquidea-network:
