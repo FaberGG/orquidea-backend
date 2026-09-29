@@ -1,9 +1,9 @@
 ﻿package com.orquidea.api.controllers;
 
-import com.orquidea.api.dto.AdministradorDto;
+import com.orquidea.api.dto.AdministratorDto;
 import com.orquidea.api.dto.RespuestaError;
-import com.orquidea.api.dto.SolicitudEdicionAdministrador;
-import com.orquidea.api.service.AdministradorServicio;
+import com.orquidea.api.dto.AdministratorUpdateRequest;
+import com.orquidea.api.service.AdministratorService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -26,9 +26,9 @@ import java.util.UUID;
 @RequiredArgsConstructor
 @PreAuthorize("hasRole('SUPERADMINISTRADOR')")
 @Tag(name = "Administradores", description = "Gestión de cuentas de administrador, solo SUPERADMINISTRADOR (HU-5)")
-public class AdministradorControlador {
+public class AdministratorController {
 
-    private final AdministradorServicio administradorServicio;
+    private final AdministratorService administratorService;
 
     @PutMapping("/{id}")
     @Operation(summary = "Editar o inhabilitar un administrador",
@@ -45,9 +45,9 @@ public class AdministradorControlador {
             content = @Content(schema = @Schema(implementation = RespuestaError.class)))
     @ApiResponse(responseCode = "409", description = "Este correo ya está registrado.",
             content = @Content(schema = @Schema(implementation = RespuestaError.class)))
-    public AdministradorDto actualizar(@PathVariable UUID id,
-                                       @Valid @RequestBody SolicitudEdicionAdministrador solicitud) {
-        return administradorServicio.actualizar(id, solicitud);
+    public AdministratorDto actualizar(@PathVariable UUID id,
+                                       @Valid @RequestBody AdministratorUpdateRequest solicitud) {
+        return administratorService.actualizar(id, solicitud);
     }
 
     @PostMapping("/{id}/revocar-acceso")
@@ -62,7 +62,7 @@ public class AdministradorControlador {
             content = @Content(schema = @Schema(implementation = RespuestaError.class)))
     @ApiResponse(responseCode = "409", description = "No puedes revocar el único superadministrador de la plataforma.",
             content = @Content(schema = @Schema(implementation = RespuestaError.class)))
-    public AdministradorDto revocarAcceso(@PathVariable UUID id) {
-        return administradorServicio.revocarAcceso(id);
+    public AdministratorDto revocarAcceso(@PathVariable UUID id) {
+        return administratorService.revocarAcceso(id);
     }
 }

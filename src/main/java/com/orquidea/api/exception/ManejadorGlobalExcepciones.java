@@ -87,9 +87,9 @@ public class ManejadorGlobalExcepciones {
         return construir(HttpStatus.CONFLICT, ex.getMessage(), request);
     }
 
-    @ExceptionHandler(OperacionNoPermitidaExcepcion.class)
+    @ExceptionHandler(OperationNotAllowedException.class)
     public ResponseEntity<RespuestaError> manejarOperacionNoPermitida(
-            OperacionNoPermitidaExcepcion ex, HttpServletRequest request) {
+            OperationNotAllowedException ex, HttpServletRequest request) {
         return construir(HttpStatus.CONFLICT, ex.getMessage(), request);
     }
 

@@ -15,7 +15,7 @@ import java.util.UUID;
 @NoArgsConstructor
 @AllArgsConstructor
 @Schema(description = "Administrador de la plataforma")
-public class AdministradorDto {
+public class AdministratorDto {
 
     @Schema(description = "Identificador del usuario", example = "3f6c1a52-7a1e-4c5b-9c1d-2b8f0e4a9d10")
     private UUID id;

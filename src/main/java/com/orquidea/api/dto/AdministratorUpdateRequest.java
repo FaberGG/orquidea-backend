@@ -16,7 +16,7 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 @Schema(description = "Datos editables de un administrador")
-public class SolicitudEdicionAdministrador {
+public class AdministratorUpdateRequest {
 
     public static final String MENSAJE_OBLIGATORIOS = "Debes completar todos los campos obligatorios.";
 
