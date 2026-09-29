@@ -2,7 +2,9 @@ package com.orquidea.api.controllers;
 
 import com.orquidea.api.dto.RespuestaError;
 import com.orquidea.api.dto.RespuestaInicioSesion;
+import com.orquidea.api.dto.RespuestaRegistro;
 import com.orquidea.api.dto.SolicitudInicioSesion;
+import com.orquidea.api.dto.SolicitudRegistro;
 import com.orquidea.api.dto.UsuarioAutenticadoDto;
 import com.orquidea.api.security.UsuarioToken;
 import com.orquidea.api.service.AutenticacionServicio;
@@ -14,6 +16,9 @@ import io.swagger.v3.oas.annotations.security.SecurityRequirements;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -51,4 +56,16 @@ public class AutenticacionControlador {
     public UsuarioAutenticadoDto obtenerUsuarioActual(@AuthenticationPrincipal UsuarioToken usuarioToken) {
         return autenticacionServicio.obtenerUsuarioActual(usuarioToken.id());
     }
+
+    @PostMapping("/registro")
+    @SecurityRequirements
+    @Operation(summary = "Registrar nuevo usuario", description = "Registra un nuevo usuario en el sistema y asigna el rol de usuario registrado.")
+    @ApiResponse(responseCode = "201", description = "Registro exitoso creado")
+    @ApiResponse(responseCode = "400", description = "Los datos enviados no son válidos.", content = @Content(schema = @Schema(implementation = RespuestaError.class)))
+    @ApiResponse(responseCode = "409", description = "El correo electrónico ya está registrado.", content = @Content(schema = @Schema(implementation = RespuestaError.class)))
+    public ResponseEntity<RespuestaRegistro> registrarUsuario(@Valid @RequestBody SolicitudRegistro solicitud) {
+            RespuestaRegistro respuesta = autenticacionServicio.registrarUsuario(solicitud);
+            return ResponseEntity.status(HttpStatus.CREATED).body(respuesta);
+    }
+    
 }

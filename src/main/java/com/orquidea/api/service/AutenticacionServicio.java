@@ -1,10 +1,14 @@
 package com.orquidea.api.service;
 
 import com.orquidea.api.dto.RespuestaInicioSesion;
+import com.orquidea.api.dto.RespuestaRegistro;
 import com.orquidea.api.dto.SolicitudInicioSesion;
+import com.orquidea.api.dto.SolicitudRegistro;
 import com.orquidea.api.dto.UsuarioAutenticadoDto;
 import com.orquidea.api.exception.CredencialesInvalidasExcepcion;
+import com.orquidea.api.exception.RecursoDuplicadoExcepcion;
 import com.orquidea.api.mapper.UsuarioMapper;
+import com.orquidea.api.model.Rol;
 import com.orquidea.api.model.Usuario;
 import com.orquidea.api.repository.UsuarioRepositorio;
 import com.orquidea.api.security.JwtServicio;
@@ -56,5 +60,33 @@ public class AutenticacionServicio {
 
     static String normalizarCorreo(String correo) {
         return correo.trim().toLowerCase(Locale.ROOT);
+    }
+
+
+    @Transactional
+    public RespuestaRegistro registrarUsuario(SolicitudRegistro solicitud) {
+
+        String correo = normalizarCorreo(solicitud.getCorreo());
+
+        if (usuarioRepositorio.existsByCorreo(correo)) {
+            throw new RecursoDuplicadoExcepcion(
+                    "El correo electrónico ya está registrado.");
+        }
+
+        Usuario usuario = Usuario.builder()
+                .nombre(solicitud.getNombre().trim())
+                .apellido(solicitud.getApellido().trim())
+                .correo(correo)
+                .contrasenaHash(
+                        codificadorContrasenas.encode(solicitud.getContrasena()))
+                .rol(Rol.USUARIO_REGISTRADO)
+                .habilitado(true)
+                .build();
+
+        Usuario usuarioGuardado = usuarioRepositorio.save(usuario);
+
+        RespuestaRegistro respuesta = usuarioMapper.aRespuestaRegistro(usuarioGuardado);
+
+        return respuesta;
     }
 }

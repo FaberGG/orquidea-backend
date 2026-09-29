@@ -28,9 +28,6 @@ public class UsuarioAutenticadoDto {
     @Schema(description = "Correo", example = "admin@orquidea.local")
     private String correo;
 
-    @Schema(description = "Teléfono de contacto", example = "3001234567", nullable = true)
-    private String telefono;
-
     @Schema(description = "Rol del usuario; define las opciones habilitadas en la aplicación", example = "ADMINISTRADOR")
     private Rol rol;
 }

@@ -44,9 +44,6 @@ public class Usuario {
     @Column(name = "contrasena_hash", nullable = false, length = 100)
     private String contrasenaHash;
 
-    @Column(length = 20)
-    private String telefono;
-
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 30)
     private Rol rol;

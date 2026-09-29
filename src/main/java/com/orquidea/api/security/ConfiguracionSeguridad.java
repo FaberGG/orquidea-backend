@@ -27,7 +27,7 @@ import java.util.List;
 public class ConfiguracionSeguridad {
 
     private static final String[] RUTAS_PUBLICAS = {
-            "/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html", "/error"
+            "/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html", "/error" 
     };
 
     /**
@@ -50,6 +50,7 @@ public class ConfiguracionSeguridad {
                         .requestMatchers(HttpMethod.POST, "/api/autenticacion/iniciar-sesion").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/fichas-taxonomicas", "/api/fichas-taxonomicas/**").permitAll()
                         .requestMatchers(RUTAS_PUBLICAS).permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/autenticacion/registro").permitAll()
                         .anyRequest().authenticated())
                 .exceptionHandling(excepciones -> excepciones
                         .authenticationEntryPoint((request, response, ex) ->

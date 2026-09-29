@@ -18,11 +18,14 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import java.util.UUID;
+
 class AutenticacionControladorTest extends PruebaIntegracionBase {
 
     private static final String RUTA_YO = "/api/autenticacion/yo";
     private static final String MENSAJE_CREDENCIALES = "Correo o contraseña incorrectos.";
     private static final String MENSAJE_CAMPOS = "Ambos campos son obligatorios.";
+    private static final String RUTA_REGISTRO = "/api/autenticacion/registro";
 
     // Escenario 1: ingreso exitoso
 
@@ -160,4 +163,104 @@ class AutenticacionControladorTest extends PruebaIntegracionBase {
                 .andExpect(jsonPath("$.mensaje").value(MENSAJE_CREDENCIALES))
                 .andExpect(jsonPath("$.token").doesNotExist());
     }
+
+    private ResultActions registrar(String nombre, String apellido, String correo, String contrasena) throws Exception {
+    String cuerpo = """
+            {"nombre":"%s","apellido":"%s","correo":"%s","contrasena":"%s"}
+            """.formatted(nombre, apellido, correo, contrasena);
+    return mockMvc.perform(post(RUTA_REGISTRO).contentType(MediaType.APPLICATION_JSON).content(cuerpo));
+}
+
+    // HU-2: registro de usuario
+
+    @Test
+    @DisplayName("Escenario 1: registro exitoso crea el usuario con rol USUARIO_REGISTRADO")
+    void registroExitoso() throws Exception {
+        String correo = "nuevo-" + UUID.randomUUID() + "@prueba.local";
+
+        registrar("Ana", "Gómez", correo, "Clave-Nueva-123")
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.id", not(emptyOrNullString())))
+                .andExpect(jsonPath("$.nombre").value("Ana"))
+                .andExpect(jsonPath("$.apellido").value("Gómez"))
+                .andExpect(jsonPath("$.correo").value(correo))
+                .andExpect(jsonPath("$.rol").value("USUARIO_REGISTRADO"))
+                .andExpect(jsonPath("$.contrasenaHash").doesNotExist());
+    }
+
+    @Test
+    @DisplayName("Un usuario recién registrado puede iniciar sesión con las mismas credenciales")
+    void registroExitosoPermiteIniciarSesionDespues() throws Exception {
+        String correo = "nuevo-" + UUID.randomUUID() + "@prueba.local";
+        registrar("Luis", "Ramírez", correo, "Clave-Nueva-123")
+                .andExpect(status().isCreated());
+
+        iniciarSesion(correo, "Clave-Nueva-123")
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.usuario.rol").value("USUARIO_REGISTRADO"));
+    }
+
+    @Test
+    @DisplayName("Escenario 2: el correo ya registrado responde 409")
+    void correoYaRegistrado() throws Exception {
+        String correo = crearUsuario(Rol.USUARIO_REGISTRADO, "Clave-Existente", true);
+
+        registrar("Otra", "Persona", correo, "Otra-Clave-123")
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.estado").value(409))
+                .andExpect(jsonPath("$.mensaje").value("El correo electrónico ya está registrado."))
+                .andExpect(jsonPath("$.ruta").value(RUTA_REGISTRO));
+    }
+
+    // Escenario 3: campos obligatorios incompletos
+
+    @Test
+    @DisplayName("Escenario 3: nombre ausente")
+    void nombreObligatorio() throws Exception {
+        String cuerpo = """
+            {"apellido":"Pérez","correo":"valido1-%s@prueba.local","contrasena":"Clave-123"}
+            """.formatted(UUID.randomUUID());
+        mockMvc.perform(post(RUTA_REGISTRO).contentType(MediaType.APPLICATION_JSON).content(cuerpo))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.mensaje").value("El nombre es obligatorio."));
+    }
+
+    @Test
+    @DisplayName("Escenario 3: apellido ausente")
+    void apellidoObligatorio() throws Exception {
+        String cuerpo = """
+            {"nombre":"Juan","correo":"valido2-%s@prueba.local","contrasena":"Clave-123"}
+            """.formatted(UUID.randomUUID());
+        mockMvc.perform(post(RUTA_REGISTRO).contentType(MediaType.APPLICATION_JSON).content(cuerpo))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.mensaje").value("El apellido es obligatorio."));
+    }
+
+    @Test
+    @DisplayName("Escenario 3: correo ausente")
+    void correoObligatorio() throws Exception {
+        String cuerpo = """
+            {"nombre":"Juan","apellido":"Pérez","contrasena":"Clave-123"}
+            """;
+        mockMvc.perform(post(RUTA_REGISTRO).contentType(MediaType.APPLICATION_JSON).content(cuerpo))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.mensaje").value("El correo electrónico es obligatorio."));
+    }
+
+    @Test
+    @DisplayName("Escenario 3: contraseña vacía")
+    void contrasenaObligatoria() throws Exception {
+        registrar("Juan", "Pérez", "valido3-" + UUID.randomUUID() + "@prueba.local", "")
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.mensaje").value("La contraseña es obligatoria."));
+    }
+
+    @Test
+    @DisplayName("Escenario 4: correo con formato inválido")
+    void correoConFormatoInvalido() throws Exception {
+        registrar("Juan", "Pérez", "no-es-un-correo", "Clave-123")
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.mensaje").value("Ingresa un correo electrónico válido."));
+    }
+    
 }
