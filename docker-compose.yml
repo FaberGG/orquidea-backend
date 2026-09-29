@@ -1,53 +1,94 @@
-version: '3.8'
+# Uso:
+#   docker compose up -d                  -> db, pgadmin y storage (para correr la API desde el IDE)
+#   docker compose --profile app up -d    -> también la API en contenedor
+# Requiere un archivo .env (copiar .env.example).
 
 services:
-  orquidea-db:
-    image: postgres:16-alpine
-    container_name: orquidea-postgres-db
-    restart: always
-    environment:
-      POSTGRES_DB: orquidea_db
-      POSTGRES_USER: orquidea_user
-      POSTGRES_PASSWORD: orquidea_pass
+  api:
+    build: .
+    image: orquidea-backend:latest
+    container_name: orquidea-api
+    profiles: ["app"]
     ports:
-      - "5432:5432"
-    volumes:
-      - postgres_orquidea_data:/var/lib/postgresql/data
-    networks:
-      - orquidea-network
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U orquidea_user -d orquidea_db"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
-  orquidea-api:
-    build:
-      context: .
-      dockerfile: Dockerfile
-      network: host
-    container_name: orquidea-springboot-api
-    restart: always
-    ports:
-      - "8080:8080"
-    dns:
-      - 8.8.8.8
+      - "${PUERTO_API:-8080}:8080"
     environment:
       - SERVER_PORT=8080
-      - DB_URL=jdbc:postgresql://orquidea-db:5432/orquidea_db
-      - DB_USERNAME=orquidea_user
-      - DB_PASSWORD=orquidea_pass
-      - DB_DDL_AUTO=update
-      - DB_SHOW_SQL=true
-      - DB_FORMAT_SQL=true
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://db:5432/${POSTGRES_DB:?Falta .env, copie .env.example a .env}
+      - SPRING_DATASOURCE_USERNAME=${POSTGRES_USER}
+      - SPRING_DATASOURCE_PASSWORD=${POSTGRES_PASSWORD}
+      - JWT_SECRETO=${JWT_SECRETO}
+      - JWT_EXPIRACION=${JWT_EXPIRACION:-8h}
+      - SUPERADMIN_NOMBRE=${SUPERADMIN_NOMBRE:-Super}
+      - SUPERADMIN_APELLIDO=${SUPERADMIN_APELLIDO:-Administrador}
+      - SUPERADMIN_CORREO=${SUPERADMIN_CORREO}
+      - SUPERADMIN_CONTRASENA=${SUPERADMIN_CONTRASENA}
+      # Dentro de la red de Docker la API habla con "storage"; el navegador sigue usando localhost
+      - STORAGE_ENDPOINT=http://storage:9000
+      - STORAGE_REGION=${STORAGE_REGION:-us-east-1}
+      - STORAGE_ACCESS_KEY=${STORAGE_ACCESS_KEY}
+      - STORAGE_SECRET_KEY=${STORAGE_SECRET_KEY}
+      - STORAGE_BUCKET=${STORAGE_BUCKET:-orquidea}
+      - STORAGE_URL_PUBLICA=${STORAGE_URL_PUBLICA}
+      - STORAGE_CREAR_BUCKET=${STORAGE_CREAR_BUCKET:-true}
     depends_on:
-      orquidea-db:
+      db:
         condition: service_healthy
+      storage:
+        condition: service_started
+    networks:
+      - orquidea-network
+
+  db:
+    image: postgres:alpine
+    container_name: orquidea-db
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER:?Falta .env, copie .env.example a .env}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=${POSTGRES_DB}
+    volumes:
+      - db_data:/var/lib/postgresql
+    ports:
+      - "${POSTGRES_PUERTO:-5432}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    networks:
+      - orquidea-network
+
+  # Almacenamiento S3 local (reemplaza a Cloudflare R2 en desarrollo). Consola web en el puerto 9001.
+  storage:
+    image: rustfs/rustfs:1.0.0
+    container_name: orquidea-storage
+    environment:
+      - RUSTFS_ACCESS_KEY=${STORAGE_ACCESS_KEY:?Falta STORAGE_ACCESS_KEY en .env, copie .env.example}
+      - RUSTFS_SECRET_KEY=${STORAGE_SECRET_KEY}
+    volumes:
+      - storage_data:/data
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    networks:
+      - orquidea-network
+
+  pgadmin:
+    image: dpage/pgadmin4
+    container_name: orquidea-pgadmin
+    environment:
+      - PGADMIN_DEFAULT_EMAIL=${PGADMIN_CORREO:-admin@orquidea.local}
+      - PGADMIN_DEFAULT_PASSWORD=${PGADMIN_CONTRASENA:-admin}
+    ports:
+      - "8081:80"
+    depends_on:
+      - db
     networks:
       - orquidea-network
 
 volumes:
-  postgres_orquidea_data:
+  db_data:
+  storage_data:
+  pgadmin_data:
 
 networks:
   orquidea-network:

@@ -1,0 +1,53 @@
+spring:
+  application:
+    name: orquidea-backend
+  config:
+    # Variables locales de cada desarrollador (copiar .env.example a .env). En contenedores se usan variables de entorno.
+    import: optional:file:.env[.properties]
+  datasource:
+    url: jdbc:postgresql://localhost:${POSTGRES_PUERTO:5432}/${POSTGRES_DB:orquidea_db}
+    username: ${POSTGRES_USER:orquidea_user}
+    password: ${POSTGRES_PASSWORD:}
+  jpa:
+    open-in-view: false
+    hibernate:
+      # El esquema lo maneja Flyway (src/main/resources/db/migration); Hibernate solo verifica que coincida.
+      ddl-auto: validate
+  servlet:
+    multipart:
+      max-file-size: ${app.storage.tamano-maximo-imagen}
+      # Margen para los campos de texto del formulario que acompañan a la foto
+      max-request-size: 12MB
+  docker:
+    compose:
+      # Al correr desde el IDE levanta db y pgadmin, y los deja encendidos al detener la app.
+      lifecycle-management: start-only
+
+server:
+  port: ${PUERTO_API:8080}
+  tomcat:
+    # Permite leer (y rechazar con 413) subidas algo mayores al límite en vez de cortar la conexión
+    max-swallow-size: 20MB
+
+app:
+  jwt:
+    secreto: ${JWT_SECRETO:}
+    expiracion: ${JWT_EXPIRACION:8h}
+  cors:
+    # Cualquier puerto local, para no reconfigurar cada vez que cambie el puerto del frontend.
+    origenes-permitidos: ${CORS_ORIGENES_PERMITIDOS:http://localhost:*,http://127.0.0.1:*}
+  storage:
+    # Por defecto apunta al RustFS local de docker-compose; en producción, a Cloudflare R2
+    endpoint: ${STORAGE_ENDPOINT:http://localhost:9000}
+    region: ${STORAGE_REGION:us-east-1}
+    access-key: ${STORAGE_ACCESS_KEY:}
+    secret-key: ${STORAGE_SECRET_KEY:}
+    bucket: ${STORAGE_BUCKET:orquidea}
+    url-publica: ${STORAGE_URL_PUBLICA:http://localhost:9000/orquidea}
+    crear-bucket: ${STORAGE_CREAR_BUCKET:true}
+    tamano-maximo-imagen: 10MB
+  superadministrador:
+    nombre: ${SUPERADMIN_NOMBRE:Super}
+    apellido: ${SUPERADMIN_APELLIDO:Administrador}
+    correo: ${SUPERADMIN_CORREO:}
+    contrasena: ${SUPERADMIN_CONTRASENA:}
