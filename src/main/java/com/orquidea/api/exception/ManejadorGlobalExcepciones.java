@@ -87,6 +87,12 @@ public class ManejadorGlobalExcepciones {
         return construir(HttpStatus.CONFLICT, ex.getMessage(), request);
     }
 
+    @ExceptionHandler(OperacionNoPermitidaExcepcion.class)
+    public ResponseEntity<RespuestaError> manejarOperacionNoPermitida(
+            OperacionNoPermitidaExcepcion ex, HttpServletRequest request) {
+        return construir(HttpStatus.CONFLICT, ex.getMessage(), request);
+    }
+
     /** Respaldo de las validaciones de duplicados cuando dos peticiones llegan a la vez. */
     @ExceptionHandler(DataIntegrityViolationException.class)
     public ResponseEntity<RespuestaError> manejarIntegridad(
