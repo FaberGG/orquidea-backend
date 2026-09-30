@@ -32,27 +32,27 @@ public class TaxonRequest {
     @NotBlank(message = MENSAJE_OBLIGATORIOS)
     @Size(max = 100, message = "El orden no puede superar {max} caracteres.")
     @Schema(description = "Orden (DwC: order)", example = "Passeriformes")
-    private String orden;
+    private String order;
 
     @NotBlank(message = MENSAJE_OBLIGATORIOS)
     @Size(max = 100, message = "La familia no puede superar {max} caracteres.")
     @Schema(description = "Familia (DwC: family)", example = "Thraupidae")
-    private String familia;
+    private String family;
 
     @NotBlank(message = MENSAJE_OBLIGATORIOS)
     @Size(max = 100, message = "El género no puede superar {max} caracteres.")
     @Schema(description = "Género (DwC: genus)", example = "Thraupis")
-    private String genero;
+    private String genus;
 
     @NotBlank(message = MENSAJE_OBLIGATORIOS)
     @Size(max = 200, message = "El nombre científico no puede superar {max} caracteres.")
     @Schema(description = "Nombre científico (DwC: scientificName); único en la plataforma", example = "Thraupis episcopus")
-    private String nombreCientifico;
+    private String scientificName;
 
     @NotBlank(message = MENSAJE_OBLIGATORIOS)
     @Size(max = 150, message = "El nombre común no puede superar {max} caracteres.")
     @Schema(description = "Nombre común (DwC: vernacularName)", example = "Azulejo")
-    private String nombreComun;
+    private String vernacularName;
 
     @NotBlank(message = MENSAJE_OBLIGATORIOS)
     @Size(max = 2000, message = "La alimentación no puede superar {max} caracteres.")

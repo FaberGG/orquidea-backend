@@ -66,18 +66,18 @@ class TaxonControllerTest extends IntegrationTestBase {
     @Test
     @DisplayName("Escenario 1: el administrador crea la ficha y queda publicada con su foto")
     void creacionExitosa() throws Exception {
-        String nombreCientifico = nombreCientificoUnico();
+        String scientificName = nombreCientificoUnico();
 
-        String respuesta = crear(tokenAdministrador, formulario(nombreCientifico), fotoPng())
+        String respuesta = crear(tokenAdministrador, formulario(scientificName), fotoPng())
                 .andExpect(status().isCreated())
                 .andExpect(header().string(HttpHeaders.LOCATION, startsWith("http://localhost" + RUTA_FICHAS + "/")))
                 .andExpect(jsonPath("$.id").isNotEmpty())
                 .andExpect(jsonPath("$.categoria").value("AVE"))
-                .andExpect(jsonPath("$.orden").value("Passeriformes"))
-                .andExpect(jsonPath("$.familia").value("Thraupidae"))
-                .andExpect(jsonPath("$.genero").value("Thraupis"))
-                .andExpect(jsonPath("$.nombreCientifico").value(nombreCientifico))
-                .andExpect(jsonPath("$.nombreComun").value("Azulejo"))
+                .andExpect(jsonPath("$.order").value("Passeriformes"))
+                .andExpect(jsonPath("$.family").value("Thraupidae"))
+                .andExpect(jsonPath("$.genus").value("Thraupis"))
+                .andExpect(jsonPath("$.scientificName").value(scientificName))
+                .andExpect(jsonPath("$.vernacularName").value("Azulejo"))
                 .andExpect(jsonPath("$.alimentacion").value("Frutos e insectos"))
                 .andExpect(jsonPath("$.rolEnHumedal").value("Dispersor de semillas"))
                 .andExpect(jsonPath("$.estadoConservacion").value("LC"))
@@ -90,10 +90,10 @@ class TaxonControllerTest extends IntegrationTestBase {
         String id = JsonPath.read(respuesta, "$.id");
         mockMvc.perform(get(RUTA_FICHAS + "/" + id))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.nombreCientifico").value(nombreCientifico));
+                .andExpect(jsonPath("$.scientificName").value(scientificName));
         mockMvc.perform(get(RUTA_FICHAS))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$[*].nombreCientifico", hasItem(nombreCientifico)));
+                .andExpect(jsonPath("$[*].scientificName", hasItem(scientificName)));
 
         // La foto quedó en el almacenamiento y se lee desde su URL pública
         String urlFoto = JsonPath.read(respuesta, "$.urlFoto");
@@ -117,7 +117,7 @@ class TaxonControllerTest extends IntegrationTestBase {
     // Escenario 2: campos obligatorios incompletos
 
     @ParameterizedTest
-    @ValueSource(strings = {"categoria", "orden", "familia", "genero", "nombreCientifico", "nombreComun",
+    @ValueSource(strings = {"categoria", "order", "family", "genus", "scientificName", "vernacularName",
             "alimentacion", "rolEnHumedal", "estadoConservacion"})
     @DisplayName("Escenario 2: falta un campo obligatorio")
     void campoObligatorioFaltante(String campo) throws Exception {
@@ -131,7 +131,7 @@ class TaxonControllerTest extends IntegrationTestBase {
     @DisplayName("Escenario 2: un campo con solo espacios cuenta como vacío")
     void campoObligatorioEnBlanco() throws Exception {
         Map<String, String> datos = formulario(nombreCientificoUnico());
-        datos.put("nombreComun", "   ");
+        datos.put("vernacularName", "   ");
 
         esperarError(crear(tokenAdministrador, datos, fotoPng()), 400, MENSAJE_OBLIGATORIOS);
     }
@@ -184,14 +184,14 @@ class TaxonControllerTest extends IntegrationTestBase {
     @Test
     @DisplayName("No se permiten dos fichas con el mismo nombre científico, sin importar mayúsculas")
     void nombreCientificoDuplicado() throws Exception {
-        String nombreCientifico = nombreCientificoUnico();
-        crear(tokenAdministrador, formulario(nombreCientifico), fotoPng()).andExpect(status().isCreated());
+        String scientificName = nombreCientificoUnico();
+        crear(tokenAdministrador, formulario(scientificName), fotoPng()).andExpect(status().isCreated());
 
-        String repetido = "  " + nombreCientifico.toUpperCase() + " ";
+        String repetido = "  " + scientificName.toUpperCase() + " ";
         crear(tokenAdministrador, formulario(repetido), fotoPng())
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.mensaje").value(
-                        "Ya existe una ficha con el nombre científico '" + nombreCientifico.toUpperCase() + "'."));
+                        "Ya existe una ficha con el nombre científico '" + scientificName.toUpperCase() + "'."));
     }
 
     @Test
@@ -232,18 +232,18 @@ class TaxonControllerTest extends IntegrationTestBase {
     @Test
     @DisplayName("HU-8 escenario 1: edición exitosa sin enviar foto conserva la foto actual")
     void edicionExitosaSinFoto() throws Exception {
-        String nombreCientifico = nombreCientificoUnico();
-        String creada = crearFicha(nombreCientifico);
+        String scientificName = nombreCientificoUnico();
+        String creada = crearFicha(scientificName);
         String id = JsonPath.read(creada, "$.id");
-        Map<String, String> datos = formulario(nombreCientifico);
-        datos.put("nombreComun", "Azulejo común");
+        Map<String, String> datos = formulario(scientificName);
+        datos.put("vernacularName", "Azulejo común");
         datos.put("alimentacion", "Principalmente frutos");
         datos.put("estadoConservacion", "NT");
 
         String editada = editar(tokenAdministrador, id, datos, null)
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(id))
-                .andExpect(jsonPath("$.nombreComun").value("Azulejo común"))
+                .andExpect(jsonPath("$.vernacularName").value("Azulejo común"))
                 .andExpect(jsonPath("$.alimentacion").value("Principalmente frutos"))
                 .andExpect(jsonPath("$.estadoConservacion").value("NT"))
                 .andExpect(jsonPath("$.urlFoto").value((String) JsonPath.read(creada, "$.urlFoto")))
@@ -253,17 +253,17 @@ class TaxonControllerTest extends IntegrationTestBase {
                 .isNotEqualTo(JsonPath.read(creada, "$.fechaActualizacion"));
 
         mockMvc.perform(get(RUTA_FICHAS + "/" + id))
-                .andExpect(jsonPath("$.nombreComun").value("Azulejo común"));
+                .andExpect(jsonPath("$.vernacularName").value("Azulejo común"));
     }
 
     @Test
     @DisplayName("HU-8 escenario 1: un campo de archivo vacío (así lo envía el navegador) conserva la foto")
     void edicionConCampoDeFotoVacio() throws Exception {
-        String nombreCientifico = nombreCientificoUnico();
-        String creada = crearFicha(nombreCientifico);
+        String scientificName = nombreCientificoUnico();
+        String creada = crearFicha(scientificName);
         MockMultipartFile sinSeleccionar = new MockMultipartFile("foto", "", "application/octet-stream", new byte[0]);
 
-        editar(tokenAdministrador, JsonPath.read(creada, "$.id"), formulario(nombreCientifico), sinSeleccionar)
+        editar(tokenAdministrador, JsonPath.read(creada, "$.id"), formulario(scientificName), sinSeleccionar)
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.urlFoto").value((String) JsonPath.read(creada, "$.urlFoto")));
     }
@@ -271,12 +271,12 @@ class TaxonControllerTest extends IntegrationTestBase {
     @Test
     @DisplayName("HU-8 escenario 1: una foto nueva reemplaza a la anterior, que se borra del almacenamiento")
     void edicionConFotoNueva() throws Exception {
-        String nombreCientifico = nombreCientificoUnico();
-        String creada = crearFicha(nombreCientifico);
+        String scientificName = nombreCientificoUnico();
+        String creada = crearFicha(scientificName);
         String urlAnterior = JsonPath.read(creada, "$.urlFoto");
         MockMultipartFile fotoJpg = new MockMultipartFile("foto", "nueva.jpg", "image/jpeg", jpeg);
 
-        String editada = editar(tokenAdministrador, JsonPath.read(creada, "$.id"), formulario(nombreCientifico), fotoJpg)
+        String editada = editar(tokenAdministrador, JsonPath.read(creada, "$.id"), formulario(scientificName), fotoJpg)
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.urlFoto", endsWith(".jpg")))
                 .andReturn().getResponse().getContentAsString();
@@ -288,37 +288,37 @@ class TaxonControllerTest extends IntegrationTestBase {
     @Test
     @DisplayName("HU-8: el superadministrador también puede editar (HU-6)")
     void edicionComoSuperadministrador() throws Exception {
-        String nombreCientifico = nombreCientificoUnico();
-        String id = JsonPath.read(crearFicha(nombreCientifico), "$.id");
+        String scientificName = nombreCientificoUnico();
+        String id = JsonPath.read(crearFicha(scientificName), "$.id");
         String token = obtenerToken(CORREO_SUPERADMIN, CONTRASENA_SUPERADMIN);
 
-        editar(token, id, formulario(nombreCientifico), null).andExpect(status().isOk());
+        editar(token, id, formulario(scientificName), null).andExpect(status().isOk());
     }
 
     @Test
     @DisplayName("HU-8: un campo obligatorio vacío no modifica la ficha")
     void edicionConCampoFaltante() throws Exception {
-        String nombreCientifico = nombreCientificoUnico();
-        String id = JsonPath.read(crearFicha(nombreCientifico), "$.id");
-        Map<String, String> datos = formulario(nombreCientifico);
-        datos.put("nombreComun", "Nombre que no debe guardarse");
-        datos.remove("familia");
+        String scientificName = nombreCientificoUnico();
+        String id = JsonPath.read(crearFicha(scientificName), "$.id");
+        Map<String, String> datos = formulario(scientificName);
+        datos.put("vernacularName", "Nombre que no debe guardarse");
+        datos.remove("family");
 
         esperarError(editar(tokenAdministrador, id, datos, null), 400, MENSAJE_OBLIGATORIOS);
         mockMvc.perform(get(RUTA_FICHAS + "/" + id))
-                .andExpect(jsonPath("$.nombreComun").value("Azulejo"))
-                .andExpect(jsonPath("$.familia").value("Thraupidae"));
+                .andExpect(jsonPath("$.vernacularName").value("Azulejo"))
+                .andExpect(jsonPath("$.family").value("Thraupidae"));
     }
 
     @Test
     @DisplayName("HU-8: una foto con formato no permitido no modifica la ficha ni su foto")
     void edicionConFotoInvalida() throws Exception {
-        String nombreCientifico = nombreCientificoUnico();
-        String creada = crearFicha(nombreCientifico);
+        String scientificName = nombreCientificoUnico();
+        String creada = crearFicha(scientificName);
         String id = JsonPath.read(creada, "$.id");
         MockMultipartFile gif = new MockMultipartFile("foto", "foto.gif", "image/gif", imagen("gif"));
 
-        esperarError(editar(tokenAdministrador, id, formulario(nombreCientifico), gif), 400, MENSAJE_FORMATO);
+        esperarError(editar(tokenAdministrador, id, formulario(scientificName), gif), 400, MENSAJE_FORMATO);
         mockMvc.perform(get(RUTA_FICHAS + "/" + id))
                 .andExpect(jsonPath("$.urlFoto").value((String) JsonPath.read(creada, "$.urlFoto")));
     }
@@ -328,8 +328,8 @@ class TaxonControllerTest extends IntegrationTestBase {
     void edicionConNombreDeOtraFicha() throws Exception {
         String nombreOtra = nombreCientificoUnico();
         crearFicha(nombreOtra);
-        String nombreCientifico = nombreCientificoUnico();
-        String id = JsonPath.read(crearFicha(nombreCientifico), "$.id");
+        String scientificName = nombreCientificoUnico();
+        String id = JsonPath.read(crearFicha(scientificName), "$.id");
 
         esperarError(editar(tokenAdministrador, id, formulario(nombreOtra), null), 409,
                 "Ya existe una ficha con el nombre científico '" + nombreOtra + "'.");
@@ -338,12 +338,12 @@ class TaxonControllerTest extends IntegrationTestBase {
     @Test
     @DisplayName("HU-8: la ficha puede conservar su propio nombre científico, incluso cambiando mayúsculas")
     void edicionConservandoSuNombre() throws Exception {
-        String nombreCientifico = nombreCientificoUnico();
-        String id = JsonPath.read(crearFicha(nombreCientifico), "$.id");
+        String scientificName = nombreCientificoUnico();
+        String id = JsonPath.read(crearFicha(scientificName), "$.id");
 
-        editar(tokenAdministrador, id, formulario(nombreCientifico.toUpperCase()), null)
+        editar(tokenAdministrador, id, formulario(scientificName.toUpperCase()), null)
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.nombreCientifico").value(nombreCientifico.toUpperCase()));
+                .andExpect(jsonPath("$.scientificName").value(scientificName.toUpperCase()));
     }
 
     @Test
@@ -356,12 +356,12 @@ class TaxonControllerTest extends IntegrationTestBase {
     @Test
     @DisplayName("HU-8: solo administradores pueden editar")
     void edicionSinPermisos() throws Exception {
-        String nombreCientifico = nombreCientificoUnico();
-        String id = JsonPath.read(crearFicha(nombreCientifico), "$.id");
+        String scientificName = nombreCientificoUnico();
+        String id = JsonPath.read(crearFicha(scientificName), "$.id");
 
-        esperarError(editar(tokenDeUsuarioNuevo(Role.USUARIO_REGISTRADO), id, formulario(nombreCientifico), null), 403,
+        esperarError(editar(tokenDeUsuarioNuevo(Role.USUARIO_REGISTRADO), id, formulario(scientificName), null), 403,
                 "No tiene permisos para realizar esta acción.");
-        esperarError(editar(null, id, formulario(nombreCientifico), null), 401,
+        esperarError(editar(null, id, formulario(scientificName), null), 401,
                 "Debe iniciar sesión para acceder a este recurso.");
     }
 
@@ -416,8 +416,8 @@ class TaxonControllerTest extends IntegrationTestBase {
     }
 
     /** Crea una ficha válida con foto png como administrador y devuelve la respuesta JSON. */
-    private String crearFicha(String nombreCientifico) throws Exception {
-        return crear(tokenAdministrador, formulario(nombreCientifico), fotoPng())
+    private String crearFicha(String scientificName) throws Exception {
+        return crear(tokenAdministrador, formulario(scientificName), fotoPng())
                 .andExpect(status().isCreated())
                 .andReturn().getResponse().getContentAsString();
     }
@@ -435,14 +435,14 @@ class TaxonControllerTest extends IntegrationTestBase {
     }
 
     /** Formulario válido y mutable, para que cada prueba quite o cambie lo que necesite. */
-    private static Map<String, String> formulario(String nombreCientifico) {
+    private static Map<String, String> formulario(String scientificName) {
         Map<String, String> datos = new LinkedHashMap<>();
         datos.put("categoria", "AVE");
-        datos.put("orden", "Passeriformes");
-        datos.put("familia", "Thraupidae");
-        datos.put("genero", "Thraupis");
-        datos.put("nombreCientifico", nombreCientifico);
-        datos.put("nombreComun", "Azulejo");
+        datos.put("order", "Passeriformes");
+        datos.put("family", "Thraupidae");
+        datos.put("genus", "Thraupis");
+        datos.put("scientificName", scientificName);
+        datos.put("vernacularName", "Azulejo");
         datos.put("alimentacion", "Frutos e insectos");
         datos.put("rolEnHumedal", "Dispersor de semillas");
         datos.put("estadoConservacion", "LC");

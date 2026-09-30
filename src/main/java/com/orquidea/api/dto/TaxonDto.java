@@ -25,19 +25,19 @@ public class TaxonDto {
     private TaxonCategory categoria;
 
     @Schema(description = "Orden (DwC: order)", example = "Passeriformes")
-    private String orden;
+    private String order;
 
     @Schema(description = "Familia (DwC: family)", example = "Thraupidae")
-    private String familia;
+    private String family;
 
     @Schema(description = "Género (DwC: genus)", example = "Thraupis")
-    private String genero;
+    private String genus;
 
     @Schema(description = "Nombre científico (DwC: scientificName)", example = "Thraupis episcopus")
-    private String nombreCientifico;
+    private String scientificName;
 
     @Schema(description = "Nombre común (DwC: vernacularName)", example = "Azulejo")
-    private String nombreComun;
+    private String vernacularName;
 
     @Schema(description = "Alimentación de la especie", example = "Frutos, néctar e insectos pequeños")
     private String alimentacion;
