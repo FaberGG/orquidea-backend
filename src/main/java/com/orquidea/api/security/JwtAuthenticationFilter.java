@@ -1,5 +1,7 @@
 package com.orquidea.api.security;
 
+import com.orquidea.api.model.User;
+import com.orquidea.api.repository.UserRepository;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -16,7 +18,10 @@ import java.util.List;
 
 /**
  * Autentica la petición si trae un "Authorization: Bearer <token>" válido.
- * Si el token falta o es inválido no corta la cadena: las rutas protegidas responderán 401.
+ * El token solo identifica al usuario: el rol y si está habilitado se leen de la base en cada petición,
+ * para que revocar o inhabilitar una cuenta (HU-5) tenga efecto de inmediato y no cuando venza el token.
+ * Si el token falta, es inválido o la cuenta ya no está habilitada, no corta la cadena: las rutas protegidas
+ * responderán 401.
  * No es un @Component para que Spring Boot no lo registre también como filtro de servlet.
  */
 @RequiredArgsConstructor
@@ -25,6 +30,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private static final String PREFIJO_BEARER = "Bearer ";
 
     private final JwtService jwtService;
+    private final UserRepository userRepository;
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain chain)
@@ -32,6 +38,9 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         String encabezado = request.getHeader(HttpHeaders.AUTHORIZATION);
         if (encabezado != null && encabezado.startsWith(PREFIJO_BEARER)) {
             jwtService.validarToken(encabezado.substring(PREFIJO_BEARER.length()).trim())
+                    .flatMap(token -> userRepository.findById(token.id()))
+                    .filter(User::isHabilitado)
+                    .map(actual -> new JwtPrincipal(actual.getId(), actual.getCorreo(), actual.getRol()))
                     .ifPresent(usuario -> {
                         var autenticacion = new UsernamePasswordAuthenticationToken(
                                 usuario, null, List.of(new SimpleGrantedAuthority("ROLE_" + usuario.rol().name())));

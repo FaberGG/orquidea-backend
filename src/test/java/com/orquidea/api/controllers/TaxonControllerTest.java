@@ -3,6 +3,7 @@ package com.orquidea.api.controllers;
 import com.jayway.jsonpath.JsonPath;
 import com.orquidea.api.IntegrationTestBase;
 import com.orquidea.api.model.Role;
+import com.orquidea.api.model.User;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -361,6 +362,34 @@ class TaxonControllerTest extends IntegrationTestBase {
         esperarError(editar(tokenDeUsuarioNuevo(Role.USUARIO_REGISTRADO), id, formulario(nombreCientifico), null), 403,
                 "No tiene permisos para realizar esta acción.");
         esperarError(editar(null, id, formulario(nombreCientifico), null), 401,
+                "Debe iniciar sesión para acceder a este recurso.");
+    }
+
+    // HU-5: revocar o inhabilitar tiene efecto inmediato, aunque el token siga vigente
+
+    @Test
+    @DisplayName("HU-5: un administrador degradado pierde el permiso con su token actual")
+    void administradorDegradadoNoPuedeCrear() throws Exception {
+        String correo = crearUsuario(Role.ADMINISTRADOR, "Clave-Admin-9", true);
+        String token = obtenerToken(correo, "Clave-Admin-9");
+        User usuario = userRepository.findByCorreo(correo).orElseThrow();
+        usuario.setRol(Role.USUARIO_REGISTRADO);
+        userRepository.save(usuario);
+
+        esperarError(crear(token, formulario(nombreCientificoUnico()), fotoPng()), 403,
+                "No tiene permisos para realizar esta acción.");
+    }
+
+    @Test
+    @DisplayName("HU-5: un administrador inhabilitado queda sin sesión aunque su token no haya vencido")
+    void administradorInhabilitadoNoPuedeCrear() throws Exception {
+        String correo = crearUsuario(Role.ADMINISTRADOR, "Clave-Admin-10", true);
+        String token = obtenerToken(correo, "Clave-Admin-10");
+        User usuario = userRepository.findByCorreo(correo).orElseThrow();
+        usuario.setHabilitado(false);
+        userRepository.save(usuario);
+
+        esperarError(crear(token, formulario(nombreCientificoUnico()), fotoPng()), 401,
                 "Debe iniciar sesión para acceder a este recurso.");
     }
 

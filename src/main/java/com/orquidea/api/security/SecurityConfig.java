@@ -1,5 +1,6 @@
 package com.orquidea.api.security;
 
+import com.orquidea.api.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -38,6 +39,7 @@ public class SecurityConfig {
     public SecurityFilterChain cadenaFiltrosSeguridad(
             HttpSecurity http,
             JwtService jwtService,
+            UserRepository userRepository,
             @Qualifier("handlerExceptionResolver") HandlerExceptionResolver resolutorExcepciones) throws Exception {
         return http
                 .csrf(AbstractHttpConfigurer::disable)
@@ -57,7 +59,7 @@ public class SecurityConfig {
                                 resolutorExcepciones.resolveException(request, response, null, ex))
                         .accessDeniedHandler((request, response, ex) ->
                                 resolutorExcepciones.resolveException(request, response, null, ex)))
-                .addFilterBefore(new JwtAuthenticationFilter(jwtService), UsernamePasswordAuthenticationFilter.class)
+                .addFilterBefore(new JwtAuthenticationFilter(jwtService, userRepository), UsernamePasswordAuthenticationFilter.class)
                 .build();
     }
 
