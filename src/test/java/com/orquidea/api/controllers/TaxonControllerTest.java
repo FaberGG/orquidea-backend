@@ -38,6 +38,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.hamcrest.Matchers.not;
 
 class TaxonControllerTest extends IntegrationTestBase {
 
@@ -391,6 +392,56 @@ class TaxonControllerTest extends IntegrationTestBase {
 
         esperarError(crear(token, formulario(nombreCientificoUnico()), fotoPng()), 401,
                 "Debe iniciar sesión para acceder a este recurso.");
+    }
+    
+    // HU-10: listado por categoría
+
+    @Test
+    @DisplayName("HU-10 escenario 1: filtrar por categoría devuelve solo fichas de esa categoría, con foto y nombre común")
+    void listarPorCategoria() throws Exception {
+        String ave = nombreCientificoUnico();
+        String planta = nombreCientificoUnico();
+        crearFicha(ave);
+        Map<String, String> datosPlanta = formulario(planta);
+        datosPlanta.put("categoria", "PLANTA");
+        crear(tokenAdministrador, datosPlanta, fotoPng()).andExpect(status().isCreated());
+
+        mockMvc.perform(get(RUTA_FICHAS).param("categoria", "AVE"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$[*].nombreCientifico", hasItem(ave)))
+            .andExpect(jsonPath("$[*].nombreCientifico", not(hasItem(planta))))
+            .andExpect(jsonPath("$[?(@.categoria != 'AVE')]").isEmpty())
+            .andExpect(jsonPath("$[0].nombreComun").isNotEmpty())
+            .andExpect(jsonPath("$[0].urlFoto").isNotEmpty());
+    }
+
+    @Test
+    @DisplayName("HU-10 escenario 2: una categoría sin fichas devuelve una lista vacía")
+    void listarCategoriaSinFichas() throws Exception {
+        crearFicha(nombreCientificoUnico()); // solo hay aves en estas pruebas
+
+        mockMvc.perform(get(RUTA_FICHAS).param("categoria", "INSECTO"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$").isArray())
+            .andExpect(jsonPath("$[?(@.categoria != 'INSECTO')]").isEmpty());
+    }
+    
+    @Test
+    @DisplayName("HU-10: sin categoría se listan todas las fichas")
+    void listarSinFiltro() throws Exception {
+        String nombreCientifico = nombreCientificoUnico();
+        crearFicha(nombreCientifico);
+
+        mockMvc.perform(get(RUTA_FICHAS))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$[*].nombreCientifico", hasItem(nombreCientifico)));
+    }
+
+    @Test
+    @DisplayName("HU-10: una categoría que no existe responde 400")
+    void listarConCategoriaInvalida() throws Exception {
+        esperarError(mockMvc.perform(get(RUTA_FICHAS).param("categoria", "PEZ")), 400,
+            "El valor del parámetro 'categoria' no es válido.");
     }
 
     // Utilidades

@@ -6,6 +6,7 @@ import com.orquidea.api.exception.DuplicateResourceException;
 import com.orquidea.api.exception.ResourceNotFoundException;
 import com.orquidea.api.mapper.TaxonMapper;
 import com.orquidea.api.model.Taxon;
+import com.orquidea.api.model.TaxonCategory;
 import com.orquidea.api.repository.TaxonRepository;
 import com.orquidea.api.storage.StorageService;
 import com.orquidea.api.storage.ImageValidator;
@@ -87,10 +88,14 @@ public class TaxonService {
     }
 
     /** Listado completo sin filtros; el listado público por categoría es la HU-10. */
-    public List<TaxonDto> listar() {
-        return fichaRepositorio.findAll(Sort.by("nombreComun")).stream()
-                .map(this::aDto)
-                .toList();
+    public List<TaxonDto> listar(TaxonCategory categoria) {
+        Sort orden = Sort.by("nombreComun");
+        List<Taxon> fichas = categoria == null
+            ? fichaRepositorio.findAll(orden)
+            : fichaRepositorio.findByCategoria(categoria, orden);
+        return fichas.stream()
+            .map(this::aDto)
+            .toList();
     }
 
     /** Sube la foto y programa su borrado si la transacción no llega a confirmarse. */

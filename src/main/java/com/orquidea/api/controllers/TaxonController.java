@@ -3,8 +3,10 @@ package com.orquidea.api.controllers;
 import com.orquidea.api.dto.TaxonDto;
 import com.orquidea.api.dto.ApiErrorResponse;
 import com.orquidea.api.dto.TaxonRequest;
+import com.orquidea.api.model.TaxonCategory;
 import com.orquidea.api.service.TaxonService;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -17,13 +19,7 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.ModelAttribute;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.PutMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
 import java.util.List;
@@ -96,9 +92,15 @@ public class TaxonController {
     @GetMapping
     @SecurityRequirements
     @Operation(summary = "Listar fichas taxonómicas",
-            description = "Público. Todas las fichas ordenadas por nombre común; el filtrado por categoría llega con la HU-10.")
-    @ApiResponse(responseCode = "200", description = "Listado de fichas")
-    public List<TaxonDto> listar() {
-        return fichaServicio.listar();
+        description = "Público. Ordenadas por nombre común. Con el parámetro categoria (AVE, PLANTA o INSECTO) "
+            + "devuelve solo las de ese listado; sin él, todas. Si la categoría no tiene fichas responde una "
+            + "lista vacía y el cliente muestra: 'Aún no hay especies registradas en esta categoría.'")
+    @ApiResponse(responseCode = "200", description = "Listado de fichas (vacío si no hay ninguna)")
+    @ApiResponse(responseCode = "400", description = "El valor del parámetro 'categoria' no es válido.",
+        content = @Content(schema = @Schema(implementation = ApiErrorResponse.class)))
+    public List<TaxonDto> listar(
+        @Parameter(description = "Categoría a consultar; si se omite, se listan todas", example = "AVE")
+        @RequestParam(required = false) TaxonCategory categoria) {
+        return fichaServicio.listar(categoria);
     }
 }
