@@ -1,7 +1,7 @@
 package com.orquidea.api.controllers;
 
 import com.orquidea.api.dto.AdministratorDto;
-import com.orquidea.api.dto.RespuestaError;
+import com.orquidea.api.dto.ApiErrorResponse;
 import com.orquidea.api.dto.AdministratorUpdateRequest;
 import com.orquidea.api.service.AdministratorService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -36,15 +36,15 @@ public class AdministratorController {
                     + "Ante un 200 el cliente muestra: 'Los cambios se guardaron correctamente.'")
     @ApiResponse(responseCode = "200", description = "Administrador actualizado")
     @ApiResponse(responseCode = "400", description = "Debes completar todos los campos obligatorios. / Ingresa un correo electrónico válido.",
-            content = @Content(schema = @Schema(implementation = RespuestaError.class)))
+            content = @Content(schema = @Schema(implementation = ApiErrorResponse.class)))
     @ApiResponse(responseCode = "401", description = "Sin sesión iniciada",
-            content = @Content(schema = @Schema(implementation = RespuestaError.class)))
+            content = @Content(schema = @Schema(implementation = ApiErrorResponse.class)))
     @ApiResponse(responseCode = "403", description = "El usuario no es superadministrador",
-            content = @Content(schema = @Schema(implementation = RespuestaError.class)))
+            content = @Content(schema = @Schema(implementation = ApiErrorResponse.class)))
     @ApiResponse(responseCode = "404", description = "El administrador no existe",
-            content = @Content(schema = @Schema(implementation = RespuestaError.class)))
+            content = @Content(schema = @Schema(implementation = ApiErrorResponse.class)))
     @ApiResponse(responseCode = "409", description = "Este correo ya está registrado.",
-            content = @Content(schema = @Schema(implementation = RespuestaError.class)))
+            content = @Content(schema = @Schema(implementation = ApiErrorResponse.class)))
     public AdministratorDto actualizar(@PathVariable UUID id,
                                        @Valid @RequestBody AdministratorUpdateRequest solicitud) {
         return administratorService.actualizar(id, solicitud);
@@ -55,13 +55,13 @@ public class AdministratorController {
             description = "Degrada la cuenta a USUARIO_REGISTRADO y notifica al afectado por correo.")
     @ApiResponse(responseCode = "200", description = "Acceso revocado; la cuenta quedó como usuario registrado")
     @ApiResponse(responseCode = "401", description = "Sin sesión iniciada",
-            content = @Content(schema = @Schema(implementation = RespuestaError.class)))
+            content = @Content(schema = @Schema(implementation = ApiErrorResponse.class)))
     @ApiResponse(responseCode = "403", description = "El usuario no es superadministrador",
-            content = @Content(schema = @Schema(implementation = RespuestaError.class)))
+            content = @Content(schema = @Schema(implementation = ApiErrorResponse.class)))
     @ApiResponse(responseCode = "404", description = "El administrador no existe",
-            content = @Content(schema = @Schema(implementation = RespuestaError.class)))
+            content = @Content(schema = @Schema(implementation = ApiErrorResponse.class)))
     @ApiResponse(responseCode = "409", description = "No puedes revocar el único superadministrador de la plataforma.",
-            content = @Content(schema = @Schema(implementation = RespuestaError.class)))
+            content = @Content(schema = @Schema(implementation = ApiErrorResponse.class)))
     public AdministratorDto revocarAcceso(@PathVariable UUID id) {
         return administratorService.revocarAcceso(id);
     }
