@@ -1,4 +1,4 @@
-﻿package com.orquidea.api.mapper;
+package com.orquidea.api.mapper;
 
 import com.orquidea.api.dto.AdministratorDto;
 import com.orquidea.api.dto.AdministratorUpdateRequest;

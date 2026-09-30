@@ -1,4 +1,4 @@
-﻿package com.orquidea.api.dto;
+package com.orquidea.api.dto;
 
 import com.orquidea.api.model.Rol;
 import io.swagger.v3.oas.annotations.media.Schema;
