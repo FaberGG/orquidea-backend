@@ -1,4 +1,4 @@
-﻿package com.orquidea.api.config;
+package com.orquidea.api.config;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
 

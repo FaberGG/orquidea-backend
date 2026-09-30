@@ -1,4 +1,4 @@
-﻿package com.orquidea.api.service;
+package com.orquidea.api.service;
 
 import com.orquidea.api.config.MailProperties;
 import lombok.RequiredArgsConstructor;

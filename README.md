@@ -94,17 +94,37 @@ Las pruebas de integración usan **Testcontainers** (PostgreSQL y RustFS reales)
 
 ## Convención de código y commits
 
-- Código (clases, métodos, variables, rutas, JSON) en **español**, sin tildes ni ñ en identificadores (`contrasena`). Los datos biológicos siguen Darwin Core.
-- Ramas: `feature/hu-<n>-<descripcion>` o `fix/<descripcion>`, creadas desde `dev`.
-- Commits: `<tipo>(<alcance>): <descripción en minúscula>`, con el alcance opcional (la HU o el módulo).
+### Nombres
+
+- **Clases en inglés**, con el sufijo de su capa:
+
+  | Capa | Sufijo | Ejemplo |
+  |---|---|---|
+  | `controllers` | `Controller` | `TaxonController` |
+  | `service` | `Service` | `AuthService` |
+  | `repository` | `Repository` | `UserRepository` |
+  | `mapper` | `Mapper` | `TaxonMapper` |
+  | `dto` | `Request` / `Response` / `Dto` | `LoginRequest`, `LoginResponse`, `TaxonDto` |
+  | `exception` | `Exception` | `ResourceNotFoundException` |
+  | `config` | `Config` / `Properties` / `Initializer` | `StorageConfig`, `JwtProperties` |
+  | pruebas | `Test` | `AuthControllerTest` |
+
+- Las entidades biológicas usan el término **Darwin Core** (`Taxon`), según la regla 1.
+- Métodos, variables, campos, rutas de la API, campos del JSON, tablas y mensajes al usuario siguen en **español**, sin tildes ni ñ en los identificadores (`contrasena`, `/api/fichas-taxonomicas`).
+- Archivos en **UTF-8 sin BOM** (lo fija `.editorconfig`); `javac` no compila archivos con BOM.
+
+### Ramas y commits
+
+- Ramas: `feature/hu-<n>-<descripcion>`, `fix/<descripcion>` o `refactor/<descripcion>`, creadas desde `dev`.
+- Commits en **inglés** con [Conventional Commits](https://www.conventionalcommits.org/): `<type>(<scope>): <description>`, con el alcance opcional (la HU o el módulo).
 
 | Tipo | Uso |
 |---|---|
-| `agrega` | Funcionalidad nueva |
-| `corrige` | Corrección de errores |
-| `mejora` | Refactor o ajuste sin cambiar el comportamiento |
-| `pruebas` | Solo pruebas |
+| `feat` | Funcionalidad nueva |
+| `fix` | Corrección de errores |
+| `refactor` | Cambio de código sin cambiar el comportamiento |
+| `test` | Solo pruebas |
 | `docs` | Documentación |
-| `config` | Dependencias, Docker, build, CI |
+| `chore` | Dependencias, Docker, build, CI |
 
-Ejemplos: `agrega(HU-1): inicio de sesión con JWT`, `corrige(auth): mensaje de campos vacíos`, `config: actualiza springdoc`.
+Ejemplos: `feat(HU-1): add JWT login`, `fix(auth): empty fields message`, `chore: bump springdoc`.
