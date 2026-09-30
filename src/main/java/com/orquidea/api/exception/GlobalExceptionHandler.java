@@ -15,6 +15,7 @@ import org.springframework.validation.FieldError;
 import org.springframework.web.ErrorResponse;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.util.unit.DataSize;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
@@ -101,10 +102,17 @@ public class GlobalExceptionHandler {
         return construir(HttpStatus.CONFLICT, "El registro entra en conflicto con uno existente.", request);
     }
 
-    /** El id de la ruta no tiene formato UUID: para el cliente es un recurso que no existe. */
+    /**
+     * Un id de ruta que no es UUID es, para el cliente, un recurso que no existe (404);
+     * un parámetro de consulta con valor inválido (p. ej. categoria=PEZ) es una solicitud incorrecta (400).
+     */
     @ExceptionHandler(MethodArgumentTypeMismatchException.class)
     public ResponseEntity<ApiErrorResponse> manejarParametroInvalido(
-            MethodArgumentTypeMismatchException ex, HttpServletRequest request) {
+        MethodArgumentTypeMismatchException ex, HttpServletRequest request) {
+        if (ex.getParameter().hasParameterAnnotation(RequestParam.class)) {
+            return construir(HttpStatus.BAD_REQUEST,
+                "El valor del parámetro '" + ex.getName() + "' no es válido.", request);
+        }
         return construir(HttpStatus.NOT_FOUND, "El recurso solicitado no existe.", request);
     }
 

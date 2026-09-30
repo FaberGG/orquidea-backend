@@ -2,6 +2,9 @@ package com.orquidea.api.repository;
 
 import com.orquidea.api.model.Taxon;
 import org.springframework.data.jpa.repository.JpaRepository;
+import com.orquidea.api.model.TaxonCategory;
+import java.util.List;
+import org.springframework.data.domain.Sort;
 
 import java.util.UUID;
 
@@ -11,4 +14,6 @@ public interface TaxonRepository extends JpaRepository<Taxon, UUID> {
 
     /** Para editar: el nombre solo choca si lo usa otra ficha distinta a la que se edita. */
     boolean existsByNombreCientificoIgnoreCaseAndIdNot(String nombreCientifico, UUID id);
+
+    List<Taxon> findByCategoria(TaxonCategory categoria, Sort orden);
 }
