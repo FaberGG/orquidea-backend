@@ -33,4 +33,23 @@ public class EmailNotificationService {
             log.warn("No se pudo notificar la revocación de acceso a {}", destinatario, e);
         }
     }
+
+
+    /** HU-4 al crear un administrador se le envía un correo de notificación */
+    public void notificarCreacionAdministrador(String destinatario, String nombre) {
+        SimpleMailMessage mensaje = new SimpleMailMessage();
+        if (propiedades.remitente() != null && !propiedades.remitente().isBlank()) {
+            mensaje.setFrom(propiedades.remitente());
+        }
+        mensaje.setTo(destinatario);
+        mensaje.setSubject("Bienvenido al sistema del Humedal La Orquídea");
+        mensaje.setText("Hola " + nombre + ",\n\n"
+                + "Has sido registrado como administrador del sistema.\n\n"
+                + "Humedal La Orquídea");
+        try {
+            enviadorCorreo.send(mensaje);
+        } catch (MailException e) {
+            log.warn("No se pudo notificar la creación de administrador a {}", destinatario, e);
+        }
+    }
 }

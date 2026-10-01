@@ -89,6 +89,15 @@ services:
       - db
     networks:
       - orquidea-network
+  
+  mailpit:
+    image: axllent/mailpit:latest
+    container_name: orquidea-mailpit
+    ports:
+      - "1025:1025"
+      - "8025:8025"
+    networks:
+      - orquidea-network
 
 volumes:
   db_data:

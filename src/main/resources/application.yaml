@@ -56,5 +56,7 @@ app:
     apellido: ${SUPERADMIN_APELLIDO:Administrador}
     correo: ${SUPERADMIN_CORREO:}
     contrasena: ${SUPERADMIN_CONTRASENA:}
+  administradores:
+    limite: ${ADMINISTRADORES_LIMITE:}
   correo:
     remitente: ${MAIL_REMITENTE:}
