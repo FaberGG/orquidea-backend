@@ -36,10 +36,7 @@ public class AdministratorUpdateRequest {
     @Schema(description = "Correo; único en la plataforma", example = "admin@orquidea.local")
     private String correo;
 
-    @Size(max = 20, message = "El teléfono no puede superar {max} caracteres.")
-    @Schema(description = "Teléfono de contacto (opcional)", example = "3001234567", nullable = true)
-    private String telefono;
-
+    
     @NotNull(message = MENSAJE_OBLIGATORIOS)
     @Schema(description = "false inhabilita la cuenta: no podrá iniciar sesión", example = "true")
     private Boolean habilitado;

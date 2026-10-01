@@ -29,9 +29,7 @@ public class AdministratorDto {
     @Schema(description = "Correo", example = "admin@orquidea.local")
     private String correo;
 
-    @Schema(description = "Teléfono de contacto", example = "3001234567", nullable = true)
-    private String telefono;
-
+    
     @Schema(description = "Rol actual; tras revocar el acceso pasa a USUARIO_REGISTRADO", example = "ADMINISTRADOR")
     private Role rol;
 

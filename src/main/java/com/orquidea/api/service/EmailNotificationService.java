@@ -52,4 +52,7 @@ public class EmailNotificationService {
             log.warn("No se pudo notificar la creación de administrador a {}", destinatario, e);
         }
     }
+
+
+
 }

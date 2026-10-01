@@ -1,15 +1,21 @@
 package com.orquidea.api.service;
 
+import com.orquidea.api.config.AdministratorProperties;
 import com.orquidea.api.dto.AdministratorDto;
 import com.orquidea.api.dto.AdministratorUpdateRequest;
+import com.orquidea.api.dto.RegisterRequest;
+import com.orquidea.api.dto.RegisterResponse;
 import com.orquidea.api.exception.OperationNotAllowedException;
 import com.orquidea.api.exception.DuplicateResourceException;
 import com.orquidea.api.exception.ResourceNotFoundException;
 import com.orquidea.api.mapper.AdministratorMapper;
+import com.orquidea.api.mapper.UserMapper;
 import com.orquidea.api.model.Role;
 import com.orquidea.api.model.User;
 import com.orquidea.api.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
@@ -30,6 +36,9 @@ public class AdministratorService {
     private final UserRepository userRepository;
     private final AdministratorMapper administratorMapper;
     private final EmailNotificationService notificacionServicio;
+    private final UserMapper usuarioMapper;
+    private final PasswordEncoder codificadorContrasenas;
+    private final AdministratorProperties administratorProperties;
 
     /** HU-5, escenario 1. Solo cuentas con rol ADMINISTRADOR; inhabilitar es poner habilitado en false. */
     @Transactional
@@ -70,5 +79,37 @@ public class AdministratorService {
                 accion.run();
             }
         });
+    }
+
+    /*
+    hu-4 escenerio 1: registrar un administrador, si ya existe el correo, lanzar excepción. Si se supera el límite de administradores activos, lanzar excepción. 
+    Al confirmar la transacción, enviar correo de notificación.
+     */
+
+    @Transactional 
+    public RegisterResponse registrarAdministrador(RegisterRequest solicitud) {
+        String correo = AuthService.normalizarCorreo(solicitud.getCorreo());
+        if (userRepository.existsByCorreo(correo)) {
+            throw new DuplicateResourceException(MENSAJE_CORREO_REGISTRADO);
+        }
+        if(userRepository.countByRolAndHabilitadoTrue(Role.ADMINISTRADOR) >= administratorProperties.limite()) {
+            throw new OperationNotAllowedException("Administradores activos exceden el límite permitido: " + administratorProperties.limite());
+        }
+        User usuario = User.builder()
+                .nombre(solicitud.getNombre().trim())
+                .apellido(solicitud.getApellido().trim())
+                .correo(correo)
+                .contrasenaHash(
+                        codificadorContrasenas.encode(solicitud.getContrasena()))
+                .rol(Role.ADMINISTRADOR)
+                .habilitado(true)
+                .build();
+
+        User usuarioGuardado = userRepository.save(usuario);
+        alConfirmar(() -> notificacionServicio.notificarCreacionAdministrador(usuarioGuardado.getCorreo(), usuarioGuardado.getNombre()));
+
+        RegisterResponse respuesta = usuarioMapper.aRespuestaRegistro(usuarioGuardado);
+
+        return respuesta;
     }
 }
