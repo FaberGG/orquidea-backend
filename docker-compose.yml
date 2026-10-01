@@ -81,8 +81,8 @@ services:
     image: dpage/pgadmin4
     container_name: orquidea-pgadmin
     environment:
-      - PGADMIN_DEFAULT_EMAIL=${PGADMIN_CORREO:-admin@orquidea.local}
-      - PGADMIN_DEFAULT_PASSWORD=${PGADMIN_CONTRASENA:-admin}
+      - PGADMIN_DEFAULT_EMAIL=${PGADMIN_CORREO:?Falta PGADMIN_CORREO en .env, copie .env.example}
+      - PGADMIN_DEFAULT_PASSWORD=${PGADMIN_CONTRASENA:?Falta PGADMIN_CONTRASENA en .env, copie .env.example}
     ports:
       - "8081:80"
     depends_on:
