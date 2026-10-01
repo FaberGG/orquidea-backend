@@ -42,24 +42,24 @@ public class Taxon {
     private TaxonCategory categoria;
 
     /** DwC: order */
-    @Column(nullable = false, length = 100)
-    private String orden;
+    @Column(name = "orden", nullable = false, length = 100)
+    private String order;
 
     /** DwC: family */
-    @Column(nullable = false, length = 100)
-    private String familia;
+    @Column(name = "familia", nullable = false, length = 100)
+    private String family;
 
     /** DwC: genus */
-    @Column(nullable = false, length = 100)
-    private String genero;
+    @Column(name = "genero", nullable = false, length = 100)
+    private String genus;
 
     /** DwC: scientificName. Único sin distinguir mayúsculas. */
     @Column(name = "nombre_cientifico", nullable = false, length = 200)
-    private String nombreCientifico;
+    private String scientificName;
 
     /** DwC: vernacularName */
     @Column(name = "nombre_comun", nullable = false, length = 150)
-    private String nombreComun;
+    private String vernacularName;
 
     @Column(nullable = false, length = 2000)
     private String alimentacion;

@@ -31,7 +31,7 @@ import java.util.UUID;
 @Tag(name = "Fichas taxonómicas", description = "Fichas de especies del humedal (HU-7, HU-8)")
 public class TaxonController {
 
-    private final TaxonService fichaServicio;
+    private final TaxonService taxonService;
 
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @PreAuthorize("hasRole('ADMINISTRADOR')")
@@ -50,7 +50,7 @@ public class TaxonController {
             content = @Content(schema = @Schema(implementation = ApiErrorResponse.class)))
     public ResponseEntity<TaxonDto> crear(
             @Validated({Default.class, TaxonRequest.OnCreate.class}) @ModelAttribute TaxonRequest solicitud) {
-        TaxonDto ficha = fichaServicio.crear(solicitud);
+        TaxonDto ficha = taxonService.crear(solicitud);
         var ubicacion = ServletUriComponentsBuilder.fromCurrentRequest()
                 .path("/{id}").buildAndExpand(ficha.getId()).toUri();
         return ResponseEntity.created(ubicacion).body(ficha);
@@ -76,7 +76,7 @@ public class TaxonController {
     @ApiResponse(responseCode = "413", description = "La imagen supera el tamaño máximo",
             content = @Content(schema = @Schema(implementation = ApiErrorResponse.class)))
     public TaxonDto actualizar(@PathVariable UUID id, @Valid @ModelAttribute TaxonRequest solicitud) {
-        return fichaServicio.actualizar(id, solicitud);
+        return taxonService.actualizar(id, solicitud);
     }
 
     @GetMapping("/{id}")
@@ -86,7 +86,7 @@ public class TaxonController {
     @ApiResponse(responseCode = "404", description = "La ficha no existe",
             content = @Content(schema = @Schema(implementation = ApiErrorResponse.class)))
     public TaxonDto obtenerPorId(@PathVariable UUID id) {
-        return fichaServicio.obtenerPorId(id);
+        return taxonService.obtenerPorId(id);
     }
 
     @GetMapping
@@ -101,6 +101,6 @@ public class TaxonController {
     public List<TaxonDto> listar(
         @Parameter(description = "Categoría a consultar; si se omite, se listan todas", example = "AVE")
         @RequestParam(required = false) TaxonCategory categoria) {
-        return fichaServicio.listar(categoria);
+        return taxonService.listar(categoria);
     }
 }

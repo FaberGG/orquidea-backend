@@ -109,8 +109,9 @@ Las pruebas de integración usan **Testcontainers** (PostgreSQL y RustFS reales)
   | `config` | `Config` / `Properties` / `Initializer` | `StorageConfig`, `JwtProperties` |
   | pruebas | `Test` | `AuthControllerTest` |
 
-- Las entidades biológicas usan el término **Darwin Core** (`Taxon`), según la regla 1.
-- Métodos, variables, campos, rutas de la API, campos del JSON, tablas y mensajes al usuario siguen en **español**, sin tildes ni ñ en los identificadores (`contrasena`, `/api/fichas-taxonomicas`).
+- Datos biológicos en **Darwin Core** (regla 1): la entidad (`Taxon`) y sus atributos y campos del JSON (`order`, `family`, `genus`, `scientificName`, `vernacularName`). Los atributos biológicos sin término DwC (`alimentacion`, `rolEnHumedal`, `estadoConservacion`) y los propios de la app (`categoria`) van en español.
+- El resto de métodos, variables, campos, rutas de la API, campos del JSON y mensajes al usuario siguen en **español**, sin tildes ni ñ en los identificadores (`contrasena`, `/api/fichas-taxonomicas`).
+- Tablas y columnas en español, también para los datos biológicos (`orden`, `nombre_cientifico`): se mapean con `@Column(name = ...)`, y así se evitan palabras reservadas de SQL como `order`.
 - Archivos en **UTF-8 sin BOM** (lo fija `.editorconfig`); `javac` no compila archivos con BOM.
 
 ### Ramas y commits
