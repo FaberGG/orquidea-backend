@@ -34,4 +34,11 @@ build/
 
 ### Variables locales ###
 .env
+.env.dev
 /GitIgnore/
+
+### graphify ###
+# Solo se versionan el reporte y el grafo; el resto es caché local o se regenera
+graphify-out/*
+!graphify-out/GRAPH_REPORT.md
+!graphify-out/graph.json

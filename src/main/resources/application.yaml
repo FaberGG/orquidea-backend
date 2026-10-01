@@ -22,11 +22,6 @@ spring:
     compose:
       # Al correr desde el IDE levanta db y pgadmin, y los deja encendidos al detener la app.
       lifecycle-management: start-only
-  mail:
-    host: ${MAIL_HOST:localhost}
-    port: ${MAIL_PUERTO:25}
-    username: ${MAIL_USUARIO:}
-    password: ${MAIL_CONTRASENA:}
 
 server:
   port: ${PUERTO_API:8080}
@@ -60,3 +55,11 @@ app:
     limite: ${ADMINISTRADORES_LIMITE:3}
   correo:
     remitente: ${MAIL_REMITENTE:}
+    # API HTTP de Resend. Sin API key los correos solo se registran en el log (desarrollo y pruebas).
+    clave-api: ${RESEND_API_KEY:}
+    url-api: https://api.resend.com
+    tiempo-espera: 10s
+  recuperacion-contrasena:
+    vigencia: 15m
+    intentos-maximos: 5
+    espera-reenvio: 1m
