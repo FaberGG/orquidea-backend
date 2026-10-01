@@ -30,10 +30,7 @@ services:
       - STORAGE_BUCKET=${STORAGE_BUCKET:-orquidea}
       - STORAGE_URL_PUBLICA=${STORAGE_URL_PUBLICA}
       - STORAGE_CREAR_BUCKET=${STORAGE_CREAR_BUCKET:-true}
-      - MAIL_HOST=${MAIL_HOST:-localhost}
-      - MAIL_PUERTO=${MAIL_PUERTO:-25}
-      - MAIL_USUARIO=${MAIL_USUARIO:-}
-      - MAIL_CONTRASENA=${MAIL_CONTRASENA:-}
+      - RESEND_API_KEY=${RESEND_API_KEY:-}
       - MAIL_REMITENTE=${MAIL_REMITENTE:-}
     depends_on:
       db:
@@ -87,15 +84,6 @@ services:
       - "8081:80"
     depends_on:
       - db
-    networks:
-      - orquidea-network
-  
-  mailpit:
-    image: axllent/mailpit:latest
-    container_name: orquidea-mailpit
-    ports:
-      - "1025:1025"
-      - "8025:8025"
     networks:
       - orquidea-network
 

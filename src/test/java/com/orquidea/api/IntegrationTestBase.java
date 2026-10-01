@@ -4,12 +4,14 @@ import com.jayway.jsonpath.JsonPath;
 import com.orquidea.api.model.Role;
 import com.orquidea.api.model.User;
 import com.orquidea.api.repository.UserRepository;
+import com.orquidea.api.service.EmailNotificationService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
 
@@ -46,6 +48,10 @@ public abstract class IntegrationTestBase {
 
     @Autowired
     protected PasswordEncoder codificadorContrasenas;
+
+    /** Ninguna prueba envía correos; las que los necesitan verifican las llamadas a este mock. */
+    @MockitoBean
+    protected EmailNotificationService notificacionServicio;
 
     protected ResultActions iniciarSesion(String correo, String contrasena) throws Exception {
         String cuerpo = "{\"correo\":\"%s\",\"contrasena\":\"%s\"}".formatted(correo, contrasena);

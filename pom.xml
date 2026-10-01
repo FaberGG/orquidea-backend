@@ -157,15 +157,6 @@
             <version>1.5.5.Final</version>
         </dependency>
 
-        <!-- Notificaciones por correo -->
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-mail</artifactId>
-            <version>4.2.0-M1</version>
-            <scope>compile</scope>
-        </dependency>
-
-
     </dependencies>
 
     <build>
