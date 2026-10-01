@@ -22,6 +22,7 @@ services:
       - SUPERADMIN_APELLIDO=${SUPERADMIN_APELLIDO:-Administrador}
       - SUPERADMIN_CORREO=${SUPERADMIN_CORREO}
       - SUPERADMIN_CONTRASENA=${SUPERADMIN_CONTRASENA}
+      - ADMINISTRADORES_LIMITE=${ADMINISTRADORES_LIMITE:-3}
       # Dentro de la red de Docker la API habla con "storage"; el navegador sigue usando localhost
       - STORAGE_ENDPOINT=http://storage:9000
       - STORAGE_REGION=${STORAGE_REGION:-us-east-1}
