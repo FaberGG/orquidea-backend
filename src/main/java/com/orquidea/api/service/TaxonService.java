@@ -34,24 +34,24 @@ public class TaxonService {
     private static final String CARPETA_FOTOS = "fichas/";
     private static final String MENSAJE_NO_EXISTE = "La ficha taxonómica solicitada no existe.";
 
-    private final TaxonRepository fichaRepositorio;
-    private final TaxonMapper fichaMapper;
+    private final TaxonRepository taxonRepository;
+    private final TaxonMapper taxonMapper;
     private final ImageValidator imageValidator;
     private final StorageService storageService;
 
     /** HU-7. Valida todo antes de subir la foto, para no subir archivos por errores del usuario. */
     @Transactional
     public TaxonDto crear(TaxonRequest solicitud) {
-        String nombreCientifico = solicitud.getNombreCientifico().trim();
-        if (fichaRepositorio.existsByNombreCientificoIgnoreCase(nombreCientifico)) {
-            throw nombreDuplicado(nombreCientifico);
+        String scientificName = solicitud.getScientificName().trim();
+        if (taxonRepository.existsByScientificNameIgnoreCase(scientificName)) {
+            throw nombreDuplicado(scientificName);
         }
         ValidatedImage foto = imageValidator.validar(solicitud.getFoto(), TaxonRequest.MENSAJE_OBLIGATORIOS);
 
-        Taxon ficha = fichaMapper.aEntidad(solicitud);
-        ficha.setNombreCientifico(nombreCientifico);
+        Taxon ficha = taxonMapper.aEntidad(solicitud);
+        ficha.setScientificName(scientificName);
         ficha.setFotoClave(subirFoto(foto));
-        return aDto(fichaRepositorio.saveAndFlush(ficha));
+        return aDto(taxonRepository.saveAndFlush(ficha));
     }
 
     /**
@@ -60,39 +60,39 @@ public class TaxonService {
      */
     @Transactional
     public TaxonDto actualizar(UUID id, TaxonRequest solicitud) {
-        Taxon ficha = fichaRepositorio.findById(id)
+        Taxon ficha = taxonRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException(MENSAJE_NO_EXISTE));
-        String nombreCientifico = solicitud.getNombreCientifico().trim();
-        if (fichaRepositorio.existsByNombreCientificoIgnoreCaseAndIdNot(nombreCientifico, id)) {
-            throw nombreDuplicado(nombreCientifico);
+        String scientificName = solicitud.getScientificName().trim();
+        if (taxonRepository.existsByScientificNameIgnoreCaseAndIdNot(scientificName, id)) {
+            throw nombreDuplicado(scientificName);
         }
         MultipartFile archivo = solicitud.getFoto();
         ValidatedImage fotoNueva = archivo == null || archivo.isEmpty()
                 ? null
                 : imageValidator.validar(archivo, TaxonRequest.MENSAJE_OBLIGATORIOS);
 
-        fichaMapper.actualizar(solicitud, ficha);
-        ficha.setNombreCientifico(nombreCientifico);
+        taxonMapper.actualizar(solicitud, ficha);
+        ficha.setScientificName(scientificName);
         if (fotoNueva != null) {
             String fotoAnterior = ficha.getFotoClave();
             ficha.setFotoClave(subirFoto(fotoNueva));
             alConfirmar(() -> storageService.eliminar(fotoAnterior));
         }
-        return aDto(fichaRepositorio.saveAndFlush(ficha));
+        return aDto(taxonRepository.saveAndFlush(ficha));
     }
 
     public TaxonDto obtenerPorId(UUID id) {
-        return fichaRepositorio.findById(id)
+        return taxonRepository.findById(id)
                 .map(this::aDto)
                 .orElseThrow(() -> new ResourceNotFoundException(MENSAJE_NO_EXISTE));
     }
 
     /** Listado completo sin filtros; el listado público por categoría es la HU-10. */
     public List<TaxonDto> listar(TaxonCategory categoria) {
-        Sort orden = Sort.by("nombreComun");
+        Sort order = Sort.by("vernacularName");
         List<Taxon> fichas = categoria == null
-            ? fichaRepositorio.findAll(orden)
-            : fichaRepositorio.findByCategoria(categoria, orden);
+            ? taxonRepository.findAll(order)
+            : taxonRepository.findByCategoria(categoria, order);
         return fichas.stream()
             .map(this::aDto)
             .toList();
@@ -122,11 +122,11 @@ public class TaxonService {
         });
     }
 
-    private static DuplicateResourceException nombreDuplicado(String nombreCientifico) {
-        return new DuplicateResourceException("Ya existe una ficha con el nombre científico '" + nombreCientifico + "'.");
+    private static DuplicateResourceException nombreDuplicado(String scientificName) {
+        return new DuplicateResourceException("Ya existe una ficha con el nombre científico '" + scientificName + "'.");
     }
 
     private TaxonDto aDto(Taxon ficha) {
-        return fichaMapper.aDto(ficha, storageService.urlPublica(ficha.getFotoClave()));
+        return taxonMapper.aDto(ficha, storageService.urlPublica(ficha.getFotoClave()));
     }
 }
