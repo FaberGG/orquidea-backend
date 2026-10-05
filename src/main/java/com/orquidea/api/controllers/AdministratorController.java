@@ -1,9 +1,6 @@
 package com.orquidea.api.controllers;
 
-import com.orquidea.api.dto.AdministratorDto;
-import com.orquidea.api.dto.AdministratorUpdateRequest;
-import com.orquidea.api.dto.RegisterRequest;
-import com.orquidea.api.dto.RegisterResponse;
+import com.orquidea.api.dto.*;
 import com.orquidea.api.service.AdministratorService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -22,7 +19,9 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.GetMapping;
 
+import java.util.List;
 import java.util.UUID;
 
 @RestController
@@ -34,6 +33,19 @@ public class AdministratorController {
 
     private final AdministratorService administratorService;
 
+    @GetMapping
+    @Operation(summary = "Listar administradores y superadministradores",
+        description = "Solo SUPERADMINISTRADOR. Devuelve las cuentas con rol ADMINISTRADOR o SUPERADMINISTRADOR, "
+            + "incluidas las inhabilitadas, ordenadas por nombre y apellido.")
+    @ApiResponse(responseCode = "200", description = "Listado de administradores (vacío si no hay ninguno)")
+    @ApiResponse(responseCode = "401", description = "Sin sesión iniciada",
+        content = @Content(schema = @Schema(implementation = ApiErrorResponse.class)))
+    @ApiResponse(responseCode = "403", description = "El usuario no es superadministrador",
+        content = @Content(schema = @Schema(implementation = ApiErrorResponse.class)))
+    public List<AdministratorDto> listar() {
+        return administratorService.listar();
+    }
+    
     @PutMapping("/{id}")
     @Operation(summary = "Editar o inhabilitar un administrador",
             description = "Reemplaza nombre, apellido, correo, teléfono y estado (habilitado) de la cuenta. "
