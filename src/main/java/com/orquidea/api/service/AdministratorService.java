@@ -15,6 +15,7 @@ import com.orquidea.api.model.User;
 import com.orquidea.api.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 
+import org.springframework.data.domain.Sort;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -40,6 +41,15 @@ public class AdministratorService {
     private final PasswordEncoder codificadorContrasenas;
     private final AdministratorProperties administratorProperties;
 
+    /** Lista las cuentas con acceso de administración (ADMINISTRADOR y SUPERADMINISTRADOR), habilitadas o no. */
+    public List<AdministratorDto> listar() {
+        return userRepository.findByRolIn(
+                List.of(Role.SUPERADMINISTRADOR, Role.ADMINISTRADOR), Sort.by("nombre", "apellido"))
+            .stream()
+            .map(administratorMapper::aDto)
+            .toList();
+    }
+    
     /** HU-5, escenario 1. Solo cuentas con rol ADMINISTRADOR; inhabilitar es poner habilitado en false. */
     @Transactional
     public AdministratorDto actualizar(UUID id, AdministratorUpdateRequest solicitud) {
