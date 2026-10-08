@@ -51,6 +51,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/autenticacion/iniciar-sesion").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/fichas-taxonomicas", "/api/fichas-taxonomicas/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/componentes", "/api/componentes/**").permitAll()
                         .requestMatchers(RUTAS_PUBLICAS).permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/autenticacion/registro").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/autenticacion/recuperar-contrasena",
