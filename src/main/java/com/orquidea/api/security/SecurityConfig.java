@@ -53,9 +53,12 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/fichas-taxonomicas", "/api/fichas-taxonomicas/**").permitAll()
                         .requestMatchers(RUTAS_PUBLICAS).permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/autenticacion/registro").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/anuncios").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/autenticacion/recuperar-contrasena",
                                 "/api/autenticacion/restablecer-contrasena").permitAll()
-                        .anyRequest().authenticated())
+                        .anyRequest().authenticated()
+                )
+                        
                 .exceptionHandling(excepciones -> excepciones
                         .authenticationEntryPoint((request, response, ex) ->
                                 resolutorExcepciones.resolveException(request, response, null, ex))
