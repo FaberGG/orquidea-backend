@@ -1,6 +1,7 @@
 package com.orquidea.api.service;
 
 import java.util.List;
+import java.util.UUID;
 
 import org.springframework.stereotype.Service;
 
@@ -29,6 +30,18 @@ public class AnnouncementService {
     @Transactional(readOnly = true)
     public List<AnnouncementResponse> obtenerAnuncios() {
         return announcementMapper.aDtos(announcementRepository.findAllByOrderByFechaCreacionDesc());
+    }
+
+    // TODO: pendiente de HU futura (editar anuncio).
+    @Transactional
+    public AnnouncementResponse actualizarAnuncio(UUID id, AnnouncementRequest request) {
+        throw new UnsupportedOperationException("Pendiente de implementar");
+    }
+
+    // TODO: pendiente de HU futura (eliminar anuncio).
+    @Transactional
+    public void eliminarAnuncio(UUID id) {
+        throw new UnsupportedOperationException("Pendiente de implementar");
     }
 
 }
