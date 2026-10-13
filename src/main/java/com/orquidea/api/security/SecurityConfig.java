@@ -51,13 +51,17 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/autenticacion/iniciar-sesion").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/fichas-taxonomicas", "/api/fichas-taxonomicas/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/componentes", "/api/componentes/**").permitAll()
                         // Solo el foro (HU-20); la cola /pendientes sigue protegida
                         .requestMatchers(HttpMethod.GET, "/api/reportes-avistamiento").permitAll()
                         .requestMatchers(RUTAS_PUBLICAS).permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/autenticacion/registro").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/anuncios").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/autenticacion/recuperar-contrasena",
                                 "/api/autenticacion/restablecer-contrasena").permitAll()
-                        .anyRequest().authenticated())
+                        .anyRequest().authenticated()
+                )
+                        
                 .exceptionHandling(excepciones -> excepciones
                         .authenticationEntryPoint((request, response, ex) ->
                                 resolutorExcepciones.resolveException(request, response, null, ex))

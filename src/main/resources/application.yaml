@@ -53,6 +53,8 @@ app:
     contrasena: ${SUPERADMIN_CONTRASENA:}
   administradores:
     limite: ${ADMINISTRADORES_LIMITE:3}
+  componentes:
+    fotos-maximas: 10
   correo:
     remitente: ${MAIL_REMITENTE:}
     # API HTTP de Resend. Sin API key los correos solo se registran en el log (desarrollo y pruebas).
