@@ -16,6 +16,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.UUID;
@@ -50,9 +51,13 @@ public class Occurrence {
     @Column(name = "clasificacion", nullable = false, length = 150)
     private String vernacularName;
 
-    /** DwC: locality */
-    @Column(name = "lugar", length = 300)
-    private String locality;
+    /** DwC: decimalLatitude. Lugar del avistamiento; se guardan coordenadas porque un texto puede cambiar de sentido. */
+    @Column(name = "latitud", precision = 9, scale = 6)
+    private BigDecimal decimalLatitude;
+
+    /** DwC: decimalLongitude */
+    @Column(name = "longitud", precision = 9, scale = 6)
+    private BigDecimal decimalLongitude;
 
     /** Clave del objeto en el almacenamiento; null si el reporte no trae foto. */
     @Column(name = "foto_clave", length = 300)

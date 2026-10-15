@@ -8,6 +8,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.UUID;
 
@@ -30,8 +31,13 @@ public class OccurrenceDto {
     @Schema(description = "Clasificación específica (DwC: vernacularName)", example = "Azulejo")
     private String vernacularName;
 
-    @Schema(description = "Lugar del avistamiento (DwC: locality)", example = "Cerca al puente de la estación 3", nullable = true)
-    private String locality;
+    @Schema(description = "Latitud del lugar (DwC: decimalLatitude); null si el reporte no tiene lugar", example = "2.459800",
+            nullable = true)
+    private BigDecimal decimalLatitude;
+
+    @Schema(description = "Longitud del lugar (DwC: decimalLongitude); null si el reporte no tiene lugar", example = "-76.611500",
+            nullable = true)
+    private BigDecimal decimalLongitude;
 
     @Schema(description = "Nombre y apellido del autor (DwC: recordedBy)", example = "Ana Gómez")
     private String recordedBy;

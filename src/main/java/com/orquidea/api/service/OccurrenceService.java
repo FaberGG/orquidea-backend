@@ -4,6 +4,7 @@ import com.orquidea.api.dto.OccurrenceDto;
 import com.orquidea.api.dto.OccurrenceRequest;
 import com.orquidea.api.dto.PageResponse;
 import com.orquidea.api.exception.DuplicateResourceException;
+import com.orquidea.api.exception.InvalidRequestException;
 import com.orquidea.api.exception.OperationNotAllowedException;
 import com.orquidea.api.exception.ResourceNotFoundException;
 import com.orquidea.api.mapper.OccurrenceMapper;
@@ -71,6 +72,9 @@ public class OccurrenceService {
                 return new CreationResult(aDto(existente.get()), false);
             }
         }
+        if ((solicitud.getDecimalLatitude() == null) != (solicitud.getDecimalLongitude() == null)) {
+            throw new InvalidRequestException(OccurrenceRequest.MENSAJE_COORDENADAS);
+        }
         MultipartFile archivo = solicitud.getFoto();
         ValidatedImage foto = archivo == null || archivo.isEmpty() ? null : imageValidator.validar(archivo, null);
 
@@ -79,7 +83,8 @@ public class OccurrenceService {
                 .occurrenceRemarks(solicitud.getOccurrenceRemarks().trim())
                 .kingdom(solicitud.getKingdom() != null ? solicitud.getKingdom() : Kingdom.DESCONOCIDO)
                 .vernacularName(textoODesconocido(solicitud.getVernacularName()))
-                .locality(textoONulo(solicitud.getLocality()))
+                .decimalLatitude(solicitud.getDecimalLatitude())
+                .decimalLongitude(solicitud.getDecimalLongitude())
                 .estado(ReviewStatus.PENDIENTE)
                 .recordedBy(autor)
                 .build();
@@ -144,10 +149,6 @@ public class OccurrenceService {
 
     private static String textoODesconocido(String valor) {
         return valor == null || valor.isBlank() ? DESCONOCIDO : valor.trim();
-    }
-
-    private static String textoONulo(String valor) {
-        return valor == null || valor.isBlank() ? null : valor.trim();
     }
 
     private OccurrenceDto aDto(Occurrence reporte) {

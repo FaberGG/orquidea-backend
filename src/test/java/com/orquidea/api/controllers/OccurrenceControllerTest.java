@@ -68,7 +68,8 @@ class OccurrenceControllerTest extends IntegrationTestBase {
                 .andExpect(jsonPath("$.occurrenceRemarks").value("Un ave azul comiendo frutos"))
                 .andExpect(jsonPath("$.kingdom").value("ANIMALIA"))
                 .andExpect(jsonPath("$.vernacularName").value("Azulejo"))
-                .andExpect(jsonPath("$.locality").value("Puente de la estación 3"))
+                .andExpect(jsonPath("$.decimalLatitude").value(2.4598))
+                .andExpect(jsonPath("$.decimalLongitude").value(-76.6115))
                 .andExpect(jsonPath("$.urlFoto").doesNotExist())
                 .andExpect(jsonPath("$.fechaCreacion").isNotEmpty())
                 .andExpect(jsonPath("$.fechaRevision").doesNotExist());
@@ -104,7 +105,8 @@ class OccurrenceControllerTest extends IntegrationTestBase {
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.kingdom").value("DESCONOCIDO"))
                 .andExpect(jsonPath("$.vernacularName").value("Desconocido"))
-                .andExpect(jsonPath("$.locality").doesNotExist());
+                .andExpect(jsonPath("$.decimalLatitude").doesNotExist())
+                .andExpect(jsonPath("$.decimalLongitude").doesNotExist());
     }
 
     @Test
@@ -131,6 +133,30 @@ class OccurrenceControllerTest extends IntegrationTestBase {
         crear(token, datos, null)
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.recordedBy").value("Usuario De Prueba"));
+    }
+
+    @Test
+    @DisplayName("HU-18: coordenadas fuera de rango se rechazan")
+    void coordenadasFueraDeRango() throws Exception {
+        Map<String, String> latitudInvalida = formulario();
+        latitudInvalida.put("decimalLatitude", "91");
+        Map<String, String> longitudInvalida = formulario();
+        longitudInvalida.put("decimalLongitude", "-180.5");
+
+        esperarError(crear(tokenUsuario, latitudInvalida, null), 400, "Las coordenadas ingresadas no son válidas.");
+        esperarError(crear(tokenUsuario, longitudInvalida, null), 400, "Las coordenadas ingresadas no son válidas.");
+    }
+
+    @Test
+    @DisplayName("HU-18: latitud y longitud van juntas; una sola se rechaza")
+    void coordenadaIncompleta() throws Exception {
+        Map<String, String> soloLatitud = formulario();
+        soloLatitud.remove("decimalLongitude");
+        Map<String, String> soloLongitud = formulario();
+        soloLongitud.remove("decimalLatitude");
+
+        esperarError(crear(tokenUsuario, soloLatitud, null), 400, "Las coordenadas ingresadas no son válidas.");
+        esperarError(crear(tokenUsuario, soloLongitud, null), 400, "Las coordenadas ingresadas no son válidas.");
     }
 
     @Test
@@ -288,7 +314,8 @@ class OccurrenceControllerTest extends IntegrationTestBase {
         assertThat(campoDe(foro, aprobado, "recordedBy")).isEqualTo("Usuario De Prueba");
         assertThat(campoDe(foro, aprobado, "kingdom")).isEqualTo("ANIMALIA");
         assertThat(campoDe(foro, aprobado, "occurrenceRemarks")).isEqualTo("Un ave azul comiendo frutos");
-        assertThat(campoDe(foro, aprobado, "locality")).isEqualTo("Puente de la estación 3");
+        assertThat(campoDe(foro, aprobado, "decimalLatitude")).isEqualTo(2.4598);
+        assertThat(campoDe(foro, aprobado, "decimalLongitude")).isEqualTo(-76.6115);
     }
 
     @Test
@@ -380,7 +407,8 @@ class OccurrenceControllerTest extends IntegrationTestBase {
         datos.put("occurrenceRemarks", "Un ave azul comiendo frutos");
         datos.put("kingdom", "ANIMALIA");
         datos.put("vernacularName", "Azulejo");
-        datos.put("locality", "Puente de la estación 3");
+        datos.put("decimalLatitude", "2.459800");
+        datos.put("decimalLongitude", "-76.611500");
         return datos;
     }
 }
