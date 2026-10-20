@@ -5,6 +5,7 @@ import com.orquidea.api.dto.ApiErrorResponse;
 import com.orquidea.api.dto.TaxonRequest;
 import com.orquidea.api.model.TaxonCategory;
 import com.orquidea.api.service.TaxonService;
+import com.orquidea.api.service.TaxonQrService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -32,6 +33,7 @@ import java.util.UUID;
 public class TaxonController {
 
     private final TaxonService taxonService;
+    private final TaxonQrService taxonQrService;
 
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @PreAuthorize("hasRole('ADMINISTRADOR')")
@@ -87,6 +89,29 @@ public class TaxonController {
             content = @Content(schema = @Schema(implementation = ApiErrorResponse.class)))
     public TaxonDto obtenerPorId(@PathVariable UUID id) {
         return taxonService.obtenerPorId(id);
+    }
+
+    @GetMapping(value = "/{id}/qr", produces = MediaType.IMAGE_PNG_VALUE)
+    @PreAuthorize("hasRole('ADMINISTRADOR')")
+    @Operation(summary = "Descargar el código QR de una ficha taxonómica",
+            description = "Solo ADMINISTRADOR o SUPERADMINISTRADOR. El QR abre la ficha en la app Orquídea.")
+    @ApiResponse(responseCode = "200", description = "Imagen PNG del código QR",
+            content = @Content(mediaType = MediaType.IMAGE_PNG_VALUE,
+                    schema = @Schema(type = "string", format = "binary")))
+    @ApiResponse(responseCode = "401", description = "Sin sesión iniciada",
+            content = @Content(schema = @Schema(implementation = ApiErrorResponse.class)))
+    @ApiResponse(responseCode = "403", description = "El usuario no es administrador",
+            content = @Content(schema = @Schema(implementation = ApiErrorResponse.class)))
+    @ApiResponse(responseCode = "404", description = "La ficha no existe",
+            content = @Content(schema = @Schema(implementation = ApiErrorResponse.class)))
+    @ApiResponse(responseCode = "500", description = "No fue posible generar el código QR",
+            content = @Content(schema = @Schema(implementation = ApiErrorResponse.class)))
+    public ResponseEntity<byte[]> descargarQr(@PathVariable UUID id) {
+        taxonService.obtenerPorId(id);
+        return ResponseEntity.ok()
+                .contentType(MediaType.IMAGE_PNG)
+                .header("Content-Disposition", "attachment; filename=orquidea-ficha-" + id + ".png")
+                .body(taxonQrService.generar(id));
     }
 
     @GetMapping
