@@ -1,5 +1,9 @@
 package com.orquidea.api.controllers;
 
+import com.google.zxing.BinaryBitmap;
+import com.google.zxing.MultiFormatReader;
+import com.google.zxing.RGBLuminanceSource;
+import com.google.zxing.common.HybridBinarizer;
 import com.jayway.jsonpath.JsonPath;
 import com.orquidea.api.IntegrationTestBase;
 import com.orquidea.api.model.Role;
@@ -442,6 +446,76 @@ class TaxonControllerTest extends IntegrationTestBase {
     void listarConCategoriaInvalida() throws Exception {
         esperarError(mockMvc.perform(get(RUTA_FICHAS).param("categoria", "PEZ")), 400,
             "El valor del parámetro 'categoria' no es válido.");
+    }
+
+    // HU-11: generación y acceso al QR
+
+    @Test
+    @DisplayName("HU-11: administrador descarga un PNG QR que apunta al identificador de la ficha")
+    void descargarQrComoAdministrador() throws Exception {
+        String ficha = crearFicha(nombreCientificoUnico());
+        String id = JsonPath.read(ficha, "$.id");
+
+        byte[] qr = mockMvc.perform(get(RUTA_FICHAS + "/" + id + "/qr")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + tokenAdministrador))
+                .andExpect(status().isOk())
+                .andExpect(header().string(HttpHeaders.CONTENT_TYPE, "image/png"))
+                .andExpect(header().string(HttpHeaders.CONTENT_DISPOSITION,
+                        "attachment; filename=orquidea-ficha-" + id + ".png"))
+                .andReturn().getResponse().getContentAsByteArray();
+
+        BufferedImage imagenQr = ImageIO.read(new java.io.ByteArrayInputStream(qr));
+        assertThat(imagenQr.getWidth()).isEqualTo(1024);
+        assertThat(imagenQr.getHeight()).isEqualTo(1024);
+        int[] pixeles = imagenQr.getRGB(0, 0, imagenQr.getWidth(), imagenQr.getHeight(), null, 0,
+                imagenQr.getWidth());
+        String contenido = new MultiFormatReader().decode(new BinaryBitmap(new HybridBinarizer(
+                new RGBLuminanceSource(imagenQr.getWidth(), imagenQr.getHeight(), pixeles)))).getText();
+        assertThat(contenido).isEqualTo("orquideamobileapp://species/" + id);
+    }
+
+    @Test
+    @DisplayName("HU-11: OpenAPI describe la descarga QR como PNG binario")
+    void openApiDescribeDescargaQrComoPngBinario() throws Exception {
+        mockMvc.perform(get("/v3/api-docs"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.paths['/api/fichas-taxonomicas/{id}/qr'].get.responses['200'].content['image/png'].schema.type")
+                        .value("string"))
+                .andExpect(jsonPath("$.paths['/api/fichas-taxonomicas/{id}/qr'].get.responses['200'].content['image/png'].schema.format")
+                        .value("binary"));
+    }
+
+    @Test
+    @DisplayName("HU-11: el superadministrador también puede descargar QR")
+    void descargarQrComoSuperadministrador() throws Exception {
+        String id = JsonPath.read(crearFicha(nombreCientificoUnico()), "$.id");
+        String token = obtenerToken(CORREO_SUPERADMIN, CONTRASENA_SUPERADMIN);
+
+        mockMvc.perform(get(RUTA_FICHAS + "/" + id + "/qr")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(header().string(HttpHeaders.CONTENT_TYPE, "image/png"));
+    }
+
+    @Test
+    @DisplayName("HU-11: usuarios sin rol administrativo no descargan el QR")
+    void descargarQrSinPermisos() throws Exception {
+        String id = JsonPath.read(crearFicha(nombreCientificoUnico()), "$.id");
+
+        esperarError(mockMvc.perform(get(RUTA_FICHAS + "/" + id + "/qr")
+                        .header(HttpHeaders.AUTHORIZATION,
+                                "Bearer " + tokenDeUsuarioNuevo(Role.USUARIO_REGISTRADO))),
+                403, "No tiene permisos para realizar esta acción.");
+        esperarError(mockMvc.perform(get(RUTA_FICHAS + "/" + id + "/qr")),
+                401, "Debe iniciar sesión para acceder a este recurso.");
+    }
+
+    @Test
+    @DisplayName("HU-11: no se genera QR para una ficha inexistente")
+    void descargarQrDeFichaInexistente() throws Exception {
+        esperarError(mockMvc.perform(get(RUTA_FICHAS + "/" + UUID.randomUUID() + "/qr")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + tokenAdministrador)),
+                404, "La ficha taxonómica solicitada no existe.");
     }
 
     // Utilidades
