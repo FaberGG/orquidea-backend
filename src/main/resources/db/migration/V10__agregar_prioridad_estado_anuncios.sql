@@ -1,4 +1,4 @@
--- V8__agregar_prioridad_estado_y_vigencia_a_anuncios.sql
+-- V9__agregar_prioridad_estado_y_vigencia_a_anuncios.sql
 ALTER TABLE ANUNCIOS
     ADD COLUMN prioridad         VARCHAR(30)              NOT NULL DEFAULT 'MEDIA',
     ADD COLUMN estado            VARCHAR(30)              NOT NULL DEFAULT 'ACTIVO',
