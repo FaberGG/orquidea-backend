@@ -94,7 +94,7 @@ public class AdministratorController {
             content = @Content(schema = @Schema(implementation = ApiResponse.class)))
     @ApiResponse(responseCode = "409", description = "Este correo ya está registrado.",
             content = @Content(schema = @Schema(implementation = ApiResponse.class)))
-    public ResponseEntity<RegisterResponse> registrar(@Valid @RequestBody RegisterRequest solicitud) {
+    public ResponseEntity<RegisterResponse> registrar(@Valid @RequestBody AdminRegisterDto solicitud) {
         RegisterResponse response = administratorService.registrarAdministrador(solicitud);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
