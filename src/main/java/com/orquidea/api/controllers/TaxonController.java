@@ -117,7 +117,7 @@ public class TaxonController {
     @GetMapping
     @SecurityRequirements
     @Operation(summary = "Listar fichas taxonómicas",
-        description = "Público. Ordenadas por nombre común. Con el parámetro categoria (AVE, PLANTA o INSECTO) "
+        description = "Público. Ordenadas por nombre común. Con el parámetro categoria (AVE, PLANTA, INSECTO, MAMIFERO, REPTIL, ANFIBIO o HONGO) "
             + "devuelve solo las de ese listado; sin él, todas. Si la categoría no tiene fichas responde una "
             + "lista vacía y el cliente muestra: 'Aún no hay especies registradas en esta categoría.'")
     @ApiResponse(responseCode = "200", description = "Listado de fichas (vacío si no hay ninguna)")
