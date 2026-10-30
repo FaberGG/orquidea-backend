@@ -25,6 +25,8 @@ import io.swagger.v3.oas.annotations.security.SecurityRequirements;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.web.bind.annotation.RequestParam;
+
 
 @RestController
 @RequestMapping("/api/anuncios")
@@ -48,6 +50,7 @@ public class AnnouncementController {
             content = @Content(schema = @Schema(implementation = ApiErrorResponse.class)))
     @ApiResponse(responseCode = "403", description = "El usuario no es administrador o superadministrador",
             content = @Content(schema = @Schema(implementation = ApiErrorResponse.class)))
+
     public ResponseEntity<AnnouncementResponse> ingresarAnuncio(
             @Valid @RequestBody AnnouncementRequest request) {
         AnnouncementResponse response = announcementService.ingresarAnuncio(request);
@@ -65,4 +68,17 @@ public class AnnouncementController {
         List<AnnouncementResponse> anuncios = announcementService.obtenerAnuncios();
         return ResponseEntity.ok(anuncios);
     }
+
+    @GetMapping("/administracion")
+    @PreAuthorize("hasAnyRole('SUPERADMINISTRADOR', 'ADMINISTRADOR')")
+    @Operation(summary = "Listar anuncios para administración", description = "Solo ADMINISTRADOR o SUPERADMINISTRADOR. Devuelve todos los anuncios, incluidos los inactivos "
+                    + "y los expirados, del más reciente al más antiguo. El campo 'expirado' indica si la fecha de "
+                    + "expiración ya se cumplió y 'estado' si el administrador lo mantiene ACTIVO o INACTIVO.")
+    @ApiResponse(responseCode = "200", description = "Listado completo de anuncios (puede estar vacío)", content = @Content(array = @ArraySchema(schema = @Schema(implementation = AnnouncementResponse.class))))
+    @ApiResponse(responseCode = "401", description = "Sin sesión iniciada", content = @Content(schema = @Schema(implementation = ApiErrorResponse.class)))
+    @ApiResponse(responseCode = "403", description = "El usuario no es administrador o superadministrador", content = @Content(schema = @Schema(implementation = ApiErrorResponse.class)))
+    public ResponseEntity<List<AnnouncementResponse>> obtenerAnunciosAdministracion() {
+            return ResponseEntity.ok(announcementService.obtenerAnunciosAdministracion());
+}
+    
 }

@@ -29,8 +29,14 @@ public class AnnouncementService {
 
     @Transactional(readOnly = true)
     public List<AnnouncementResponse> obtenerAnuncios() {
+        return announcementMapper.aDtos(announcementRepository.findVisibles(java.time.Instant.now()));
+    }
+
+    @Transactional(readOnly = true)
+    public List<AnnouncementResponse> obtenerAnunciosAdministracion() {
         return announcementMapper.aDtos(announcementRepository.findAllByOrderByFechaCreacionDesc());
     }
+
 
     // TODO: pendiente de HU futura (editar anuncio).
     @Transactional
@@ -40,7 +46,7 @@ public class AnnouncementService {
 
     // TODO: pendiente de HU futura (eliminar anuncio).
     @Transactional
-    public void eliminarAnuncio(UUID id) {
+    public void desactivarAnuncio(UUID id) {
         throw new UnsupportedOperationException("Pendiente de implementar");
     }
 
