@@ -6,5 +6,9 @@ package com.orquidea.api.model;
 public enum TaxonCategory {
     AVE,
     PLANTA,
-    INSECTO
+    INSECTO,
+    MAMIFERO,
+    REPTIL,
+    ANFIBIO,
+    HONGO
 }
