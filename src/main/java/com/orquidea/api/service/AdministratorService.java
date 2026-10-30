@@ -1,6 +1,7 @@
 package com.orquidea.api.service;
 
 import com.orquidea.api.config.AdministratorProperties;
+import com.orquidea.api.dto.AdminRegisterDto;
 import com.orquidea.api.dto.AdministratorDto;
 import com.orquidea.api.dto.AdministratorUpdateRequest;
 import com.orquidea.api.dto.RegisterRequest;
@@ -97,7 +98,7 @@ public class AdministratorService {
      */
 
     @Transactional 
-    public RegisterResponse registrarAdministrador(RegisterRequest solicitud) {
+    public RegisterResponse registrarAdministrador(AdminRegisterDto solicitud) {
         String correo = AuthService.normalizarCorreo(solicitud.getCorreo());
         if (userRepository.existsByCorreo(correo)) {
             throw new DuplicateResourceException(MENSAJE_CORREO_REGISTRADO);
