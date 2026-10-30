@@ -8,12 +8,14 @@ import com.jayway.jsonpath.JsonPath;
 import com.orquidea.api.IntegrationTestBase;
 import com.orquidea.api.model.Role;
 import com.orquidea.api.model.User;
+import com.orquidea.api.model.TaxonCategory;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.mock.web.MockMultipartFile;
@@ -447,7 +449,32 @@ class TaxonControllerTest extends IntegrationTestBase {
         esperarError(mockMvc.perform(get(RUTA_FICHAS).param("categoria", "PEZ")), 400,
             "El valor del parámetro 'categoria' no es válido.");
     }
+    
+    @ParameterizedTest(name = "{0}")
+    @EnumSource(TaxonCategory.class)
+    @DisplayName("HU-7 criterio 1 y HU-10: la ficha se publica en el listado de su categoría (ave, planta, insecto, mamífero, reptil, anfibio u hongo)")
+    void publicarYListarPorCadaCategoria(TaxonCategory categoria) throws Exception {
+        String scientificName = nombreCientificoUnico();
+        Map<String, String> datos = formulario(scientificName);
+        datos.put("categoria", categoria.name());
 
+        crear(tokenAdministrador, datos, fotoPng())
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.categoria").value(categoria.name()));
+
+        mockMvc.perform(get(RUTA_FICHAS).param("categoria", categoria.name()))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$[*].scientificName", hasItem(scientificName)))
+            .andExpect(jsonPath("$[?(@.categoria != '" + categoria.name() + "')]").isEmpty());
+    }
+
+    @Test
+    @DisplayName("HU-7: las categorías de la versión 2.0 son exactamente siete")
+    void categoriasDisponibles() {
+        assertThat(TaxonCategory.values()).extracting(Enum::name)
+            .containsExactly("AVE", "PLANTA", "INSECTO", "MAMIFERO", "REPTIL", "ANFIBIO", "HONGO");
+    }
+    
     // HU-11: generación y acceso al QR
 
     @Test
