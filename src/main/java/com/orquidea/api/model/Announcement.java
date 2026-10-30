@@ -1,10 +1,13 @@
 package com.orquidea.api.model;
 
+import java.sql.Date;
 import java.time.Instant;
 import java.util.UUID;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
@@ -38,8 +41,21 @@ public class Announcement {
     @Column(name = "fecha_creacion", nullable = false, updatable = false)
     private Instant fechaCreacion;
 
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 30)
+    private Prioridad prioridad;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 30)
+    private Estado estado;
+
+    @Column(name = "fecha_expiracion")
+    private Instant fechaExpiracion;
+
     @PrePersist 
     private void prePersist() {
         this.fechaCreacion = Instant.now();
+        if (prioridad == null) prioridad = Prioridad.MEDIA;
+        if (estado == null) estado = Estado.ACTIVO;
     }
 }
