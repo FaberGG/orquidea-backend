@@ -211,15 +211,21 @@ class OccurrenceControllerTest extends IntegrationTestBase {
     }
 
     @Test
-    @DisplayName("HU-18 (v2.0): administradores y superadministradores también crean reportes, que quedan PENDIENTES")
-    void creacionComoAdministradores() throws Exception {
-        String tokenSuperadministrador = obtenerToken(CORREO_SUPERADMIN, CONTRASENA_SUPERADMIN);
+    @DisplayName("HU-18 (ajuste): un administrador también crea reportes, que quedan PENDIENTES para revisión")
+    void creacionComoAdministrador() throws Exception {
+        crear(tokenAdministrador, formulario(), null)
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.estado").value("PENDIENTE"));
+    }
 
-        for (String token : new String[]{tokenAdministrador, tokenSuperadministrador}) {
-            crear(token, formulario(), null)
-                    .andExpect(status().isCreated())
-                    .andExpect(jsonPath("$.estado").value("PENDIENTE"));
-        }
+    @Test
+    @DisplayName("HU-18 (ajuste): el superadministrador también crea reportes (HU-6)")
+    void creacionComoSuperadministrador() throws Exception {
+        String token = obtenerToken(CORREO_SUPERADMIN, CONTRASENA_SUPERADMIN);
+
+        crear(token, formulario(), null)
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.estado").value("PENDIENTE"));
     }
 
     // HU-19: revisión
