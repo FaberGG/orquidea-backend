@@ -63,7 +63,7 @@ public class StationService {
         return aDto(buscar(id));
     }
 
-    /** CA1 y CA4. Valida todo antes de subir la foto, para no subir archivos por errores del usuario. */
+    /** HU-13, escenarios 1 y 4. Valida todo antes de subir la foto, para no subir archivos por errores del usuario. */
     @Transactional
     public StationDto crear(StationRequest solicitud) {
         ValidatedImage foto = imageValidator.validar(solicitud.getFoto(), StationRequest.MENSAJE_OBLIGATORIOS);
@@ -76,7 +76,7 @@ public class StationService {
     }
 
     /**
-     * CA2. Reemplaza los datos y las fichas asociadas. La foto es opcional: si no llega (o llega vacía, como
+     * HU-13, escenario 2. Reemplaza los datos y las fichas asociadas. La foto es opcional: si no llega (o llega vacía, como
      * envían los navegadores un campo de archivo sin seleccionar) se conserva la actual.
      */
     @Transactional
@@ -98,7 +98,7 @@ public class StationService {
         return aDto(stationRepository.saveAndFlush(estacion));
     }
 
-    /** CA5. Las asociaciones con fichas se borran con la estación; las fichas no cambian. */
+    /** HU-13, escenario 5. Las asociaciones con fichas se borran con la estación; las fichas no cambian. */
     @Transactional
     public void eliminar(UUID id) {
         Station estacion = buscar(id);

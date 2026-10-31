@@ -69,10 +69,10 @@ class StationControllerTest extends IntegrationTestBase {
         tokenAdministrador = tokenDeUsuarioNuevo(Role.ADMINISTRADOR);
     }
 
-    // CA1 y CA4: creación con fichas asociadas
+    // HU-13: creación con fichas asociadas
 
     @Test
-    @DisplayName("CA1 y CA4: la estación se crea con sus fichas, por nombre común, y aparece en el mapa sin sesión")
+    @DisplayName("HU-13 escenarios 1 y 4: la estación se crea con sus fichas, por nombre común, y aparece en el mapa sin sesión")
     void creacionExitosa() throws Exception {
         Taxon garza = crearFicha("Garza real");
         Taxon azulejo = crearFicha("Azulejo");
@@ -107,7 +107,7 @@ class StationControllerTest extends IntegrationTestBase {
     }
 
     @Test
-    @DisplayName("CA4: fichaIds también se acepta repetido, y los ids repetidos cuentan una vez")
+    @DisplayName("HU-13 escenario 4: fichaIds también se acepta repetido, y los ids repetidos cuentan una vez")
     void fichaIdsRepetido() throws Exception {
         Taxon garza = crearFicha("Garza real");
         Taxon azulejo = crearFicha("Azulejo");
@@ -120,7 +120,7 @@ class StationControllerTest extends IntegrationTestBase {
     }
 
     @Test
-    @DisplayName("CA1: sin fichaIds la estación queda sin fichas, con la lista vacía")
+    @DisplayName("HU-13 escenario 1: sin fichaIds la estación queda sin fichas, con la lista vacía")
     void creacionSinFichas() throws Exception {
         crear(tokenAdministrador, formulario("Entrada"), fotoPng())
                 .andExpect(status().isCreated())
@@ -129,7 +129,7 @@ class StationControllerTest extends IntegrationTestBase {
     }
 
     @Test
-    @DisplayName("CA1: el superadministrador también puede crear estaciones, con foto jpg")
+    @DisplayName("HU-13 escenario 1: el superadministrador también puede crear estaciones (HU-6), con foto jpg")
     void creacionComoSuperadministrador() throws Exception {
         String token = obtenerToken(CORREO_SUPERADMIN, CONTRASENA_SUPERADMIN);
 
@@ -139,7 +139,7 @@ class StationControllerTest extends IntegrationTestBase {
     }
 
     @Test
-    @DisplayName("Las coordenadas se guardan con 6 decimales y la respuesta coincide con la consulta posterior")
+    @DisplayName("HU-13: las coordenadas se guardan con 6 decimales y la respuesta coincide con la consulta posterior")
     void coordenadasRedondeadas() throws Exception {
         Map<String, String> datos = formulario("Mirador");
         datos.put("decimalLatitude", "2.45981234");
@@ -151,11 +151,11 @@ class StationControllerTest extends IntegrationTestBase {
                 .andExpect(jsonPath("$.decimalLatitude").value(2.459812));
     }
 
-    // Campos obligatorios y CA3: coordenadas inválidas
+    // HU-13: campos obligatorios y coordenadas inválidas
 
     @ParameterizedTest
     @ValueSource(strings = {"nombre", "descripcion", "decimalLatitude", "decimalLongitude"})
-    @DisplayName("Falta un campo obligatorio")
+    @DisplayName("HU-13: falta un campo obligatorio")
     void campoObligatorioFaltante(String campo) throws Exception {
         Map<String, String> datos = formulario("Estación incompleta");
         datos.remove(campo);
@@ -164,7 +164,7 @@ class StationControllerTest extends IntegrationTestBase {
     }
 
     @Test
-    @DisplayName("La foto es obligatoria al crear")
+    @DisplayName("HU-13: la foto es obligatoria al crear")
     void sinFoto() throws Exception {
         esperarError(crear(tokenAdministrador, formulario("Sin foto"), null), 400, MENSAJE_OBLIGATORIOS);
     }
@@ -172,7 +172,7 @@ class StationControllerTest extends IntegrationTestBase {
     @ParameterizedTest
     @ValueSource(strings = {"decimalLatitude=91", "decimalLatitude=-90.5", "decimalLongitude=180.1",
             "decimalLongitude=-181", "decimalLatitude=abc", "decimalLongitude=2,5"})
-    @DisplayName("CA3: coordenadas fuera de rango o no numéricas")
+    @DisplayName("HU-13 escenario 3: coordenadas fuera de rango o no numéricas")
     void coordenadasInvalidas(String campoYValor) throws Exception {
         String[] partes = campoYValor.split("=");
         Map<String, String> datos = formulario("Fuera del mapa");
@@ -182,7 +182,7 @@ class StationControllerTest extends IntegrationTestBase {
     }
 
     @Test
-    @DisplayName("Una foto con formato no permitido se rechaza")
+    @DisplayName("HU-13: una foto con formato no permitido se rechaza")
     void imagenGif() throws Exception {
         MockMultipartFile gif = new MockMultipartFile("foto", "foto.gif", "image/gif", imagen("gif"));
 
@@ -190,7 +190,7 @@ class StationControllerTest extends IntegrationTestBase {
     }
 
     @Test
-    @DisplayName("Una ficha asociada que no existe se rechaza")
+    @DisplayName("HU-13 escenario 4: una ficha asociada que no existe se rechaza")
     void fichaInexistente() throws Exception {
         Map<String, String> datos = formulario("Con ficha fantasma");
         datos.put("fichaIds", crearFicha("Garza real").getId() + "," + UUID.randomUUID());
@@ -199,16 +199,16 @@ class StationControllerTest extends IntegrationTestBase {
     }
 
     @Test
-    @DisplayName("El nombre no puede superar 150 caracteres")
+    @DisplayName("HU-13: el nombre no puede superar 150 caracteres")
     void nombreDemasiadoLargo() throws Exception {
         esperarError(crear(tokenAdministrador, formulario("a".repeat(151)), fotoPng()), 400,
                 "El nombre no puede superar 150 caracteres.");
     }
 
-    // CA2: edición
+    // HU-13: edición
 
     @Test
-    @DisplayName("CA2: la edición sin foto conserva la actual y fichaIds reemplaza las asociaciones")
+    @DisplayName("HU-13 escenario 2: la edición sin foto conserva la actual y fichaIds reemplaza las asociaciones")
     void edicionExitosa() throws Exception {
         Taxon garza = crearFicha("Garza real");
         Taxon azulejo = crearFicha("Azulejo");
@@ -233,7 +233,7 @@ class StationControllerTest extends IntegrationTestBase {
     }
 
     @Test
-    @DisplayName("CA2: si fichaIds no llega al editar, la estación queda sin fichas")
+    @DisplayName("HU-13 escenario 2: si fichaIds no llega al editar, la estación queda sin fichas")
     void edicionSinFichas() throws Exception {
         Map<String, String> datos = formulario("Mirador");
         datos.put("fichaIds", crearFicha("Garza real").getId().toString());
@@ -245,7 +245,7 @@ class StationControllerTest extends IntegrationTestBase {
     }
 
     @Test
-    @DisplayName("CA2: una foto nueva reemplaza a la anterior, que se borra del almacenamiento")
+    @DisplayName("HU-13 escenario 2: una foto nueva reemplaza a la anterior, que se borra del almacenamiento")
     void edicionConFotoNueva() throws Exception {
         String creada = crearEstacion(formulario("Mirador"));
         String urlAnterior = JsonPath.read(creada, "$.urlFoto");
@@ -261,7 +261,7 @@ class StationControllerTest extends IntegrationTestBase {
     }
 
     @Test
-    @DisplayName("CA2: un campo de archivo vacío (así lo envía el navegador) conserva la foto")
+    @DisplayName("HU-13 escenario 2: un campo de archivo vacío (así lo envía el navegador) conserva la foto")
     void edicionConCampoDeFotoVacio() throws Exception {
         String creada = crearEstacion(formulario("Mirador"));
         MockMultipartFile sinSeleccionar = new MockMultipartFile("foto", "", "application/octet-stream", new byte[0]);
@@ -272,7 +272,7 @@ class StationControllerTest extends IntegrationTestBase {
     }
 
     @Test
-    @DisplayName("CA3 al editar: coordenadas inválidas no modifican la estación")
+    @DisplayName("HU-13 escenario 3: al editar, coordenadas inválidas no modifican la estación")
     void edicionConCoordenadasInvalidas() throws Exception {
         String id = JsonPath.read(crearEstacion(formulario("Mirador")), "$.id");
         Map<String, String> datos = formulario("Nombre que no debe guardarse");
@@ -285,7 +285,7 @@ class StationControllerTest extends IntegrationTestBase {
     }
 
     @Test
-    @DisplayName("Editar o consultar una estación que no existe responde 404")
+    @DisplayName("HU-13: editar o consultar una estación que no existe responde 404")
     void estacionInexistente() throws Exception {
         String id = UUID.randomUUID().toString();
 
@@ -293,10 +293,10 @@ class StationControllerTest extends IntegrationTestBase {
         esperarError(mockMvc.perform(get(RUTA_ESTACIONES + "/" + id)), 404, MENSAJE_NO_EXISTE);
     }
 
-    // CA5: eliminación
+    // HU-13: eliminación
 
     @Test
-    @DisplayName("CA5: la estación eliminada desaparece del mapa, su foto se borra y las fichas no cambian")
+    @DisplayName("HU-13 escenario 5: la estación eliminada desaparece del mapa, su foto se borra y las fichas no cambian")
     void eliminacion() throws Exception {
         Taxon garza = crearFicha("Garza real");
         Map<String, String> datos = formulario("Mirador");
@@ -314,7 +314,7 @@ class StationControllerTest extends IntegrationTestBase {
     }
 
     @Test
-    @DisplayName("CA5: eliminar una estación que no existe responde 404")
+    @DisplayName("HU-13 escenario 5: eliminar una estación que no existe responde 404")
     void eliminarInexistente() throws Exception {
         esperarError(eliminar(tokenAdministrador, UUID.randomUUID().toString()), 404, MENSAJE_NO_EXISTE);
     }
@@ -322,7 +322,7 @@ class StationControllerTest extends IntegrationTestBase {
     // Permisos
 
     @Test
-    @DisplayName("Un usuario registrado no puede crear, editar ni eliminar estaciones")
+    @DisplayName("HU-13: un usuario registrado no puede crear, editar ni eliminar estaciones")
     void usuarioRegistradoSinPermisos() throws Exception {
         String id = JsonPath.read(crearEstacion(formulario("Mirador")), "$.id");
         String token = tokenDeUsuarioNuevo(Role.USUARIO_REGISTRADO);
@@ -334,7 +334,7 @@ class StationControllerTest extends IntegrationTestBase {
     }
 
     @Test
-    @DisplayName("Sin sesión no se pueden crear, editar ni eliminar estaciones")
+    @DisplayName("HU-13: sin sesión no se pueden crear, editar ni eliminar estaciones")
     void sinSesion() throws Exception {
         String id = JsonPath.read(crearEstacion(formulario("Mirador")), "$.id");
         String mensaje = "Debe iniciar sesión para acceder a este recurso.";
@@ -367,7 +367,7 @@ class StationControllerTest extends IntegrationTestBase {
         return mockMvc.perform(conToken(solicitud, token));
     }
 
-    private static <B extends AbstractMockHttpServletRequestBuilder<B>> B conToken(B solicitud, String token) {
+    private static <T extends AbstractMockHttpServletRequestBuilder<?>> T conToken(T solicitud, String token) {
         if (token != null) {
             solicitud.header(HttpHeaders.AUTHORIZATION, "Bearer " + token);
         }

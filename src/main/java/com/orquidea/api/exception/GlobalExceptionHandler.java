@@ -46,7 +46,7 @@ public class GlobalExceptionHandler {
     /**
      * Prioriza los mensajes de las anotaciones (@NotBlank, @Size...) sobre los errores de conversión,
      * que Spring genera en inglés; para estos se arma un mensaje propio con el nombre del campo, salvo en las
-     * coordenadas, donde un valor no numérico es el mismo caso que uno fuera de rango (HU-13, CA3).
+     * coordenadas, donde un valor no numérico es el mismo caso que uno fuera de rango (HU-13, escenario 3).
      */
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ApiErrorResponse> manejarValidacion(

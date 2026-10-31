@@ -29,10 +29,10 @@ public class StationDto {
     @Schema(description = "URL pública de la foto", example = "http://localhost:9000/orquidea/estaciones/3c9a7e52.jpg")
     private String urlFoto;
 
-    @Schema(description = "Latitud (DwC: decimalLatitude)", example = "2.459800", type = "number")
+    @Schema(description = "Latitud (DwC: decimalLatitude)", example = "2.459800")
     private BigDecimal decimalLatitude;
 
-    @Schema(description = "Longitud (DwC: decimalLongitude)", example = "-76.611500", type = "number")
+    @Schema(description = "Longitud (DwC: decimalLongitude)", example = "-76.611500")
     private BigDecimal decimalLongitude;
 
     @Schema(description = "Fichas taxonómicas asociadas, por nombre común; lista vacía si no tiene")
