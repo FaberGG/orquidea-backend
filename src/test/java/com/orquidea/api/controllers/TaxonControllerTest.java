@@ -1,15 +1,21 @@
 package com.orquidea.api.controllers;
 
+import com.google.zxing.BinaryBitmap;
+import com.google.zxing.MultiFormatReader;
+import com.google.zxing.RGBLuminanceSource;
+import com.google.zxing.common.HybridBinarizer;
 import com.jayway.jsonpath.JsonPath;
 import com.orquidea.api.IntegrationTestBase;
 import com.orquidea.api.model.Role;
 import com.orquidea.api.model.User;
+import com.orquidea.api.model.TaxonCategory;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.mock.web.MockMultipartFile;
@@ -431,6 +437,101 @@ class TaxonControllerTest extends IntegrationTestBase {
     void listarConCategoriaInvalida() throws Exception {
         esperarError(mockMvc.perform(get(RUTA_FICHAS).param("categoria", "PEZ")), 400,
             "El valor del parámetro 'categoria' no es válido.");
+    }
+    
+    @ParameterizedTest(name = "{0}")
+    @EnumSource(TaxonCategory.class)
+    @DisplayName("HU-7 criterio 1 y HU-10: la ficha se publica en el listado de su categoría (ave, planta, insecto, mamífero, reptil, anfibio u hongo)")
+    void publicarYListarPorCadaCategoria(TaxonCategory categoria) throws Exception {
+        String scientificName = nombreCientificoUnico();
+        Map<String, String> datos = formulario(scientificName);
+        datos.put("categoria", categoria.name());
+
+        crear(tokenAdministrador, datos, fotoPng())
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.categoria").value(categoria.name()));
+
+        mockMvc.perform(get(RUTA_FICHAS).param("categoria", categoria.name()))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$[*].scientificName", hasItem(scientificName)))
+            .andExpect(jsonPath("$[?(@.categoria != '" + categoria.name() + "')]").isEmpty());
+    }
+
+    @Test
+    @DisplayName("HU-7: las categorías de la versión 2.0 son exactamente siete")
+    void categoriasDisponibles() {
+        assertThat(TaxonCategory.values()).extracting(Enum::name)
+            .containsExactly("AVE", "PLANTA", "INSECTO", "MAMIFERO", "REPTIL", "ANFIBIO", "HONGO");
+    }
+    
+    // HU-11: generación y acceso al QR
+
+    @Test
+    @DisplayName("HU-11: administrador descarga un PNG QR que apunta al identificador de la ficha")
+    void descargarQrComoAdministrador() throws Exception {
+        String ficha = crearFicha(nombreCientificoUnico());
+        String id = JsonPath.read(ficha, "$.id");
+
+        byte[] qr = mockMvc.perform(get(RUTA_FICHAS + "/" + id + "/qr")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + tokenAdministrador))
+                .andExpect(status().isOk())
+                .andExpect(header().string(HttpHeaders.CONTENT_TYPE, "image/png"))
+                .andExpect(header().string(HttpHeaders.CONTENT_DISPOSITION,
+                        "attachment; filename=orquidea-ficha-" + id + ".png"))
+                .andReturn().getResponse().getContentAsByteArray();
+
+        BufferedImage imagenQr = ImageIO.read(new java.io.ByteArrayInputStream(qr));
+        assertThat(imagenQr.getWidth()).isEqualTo(1024);
+        assertThat(imagenQr.getHeight()).isEqualTo(1024);
+        int[] pixeles = imagenQr.getRGB(0, 0, imagenQr.getWidth(), imagenQr.getHeight(), null, 0,
+                imagenQr.getWidth());
+        String contenido = new MultiFormatReader().decode(new BinaryBitmap(new HybridBinarizer(
+                new RGBLuminanceSource(imagenQr.getWidth(), imagenQr.getHeight(), pixeles)))).getText();
+        assertThat(contenido).isEqualTo("orquideamobileapp://species/" + id);
+    }
+
+    @Test
+    @DisplayName("HU-11: OpenAPI describe la descarga QR como PNG binario")
+    void openApiDescribeDescargaQrComoPngBinario() throws Exception {
+        mockMvc.perform(get("/v3/api-docs"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.paths['/api/fichas-taxonomicas/{id}/qr'].get.responses['200'].content['image/png'].schema.type")
+                        .value("string"))
+                .andExpect(jsonPath("$.paths['/api/fichas-taxonomicas/{id}/qr'].get.responses['200'].content['image/png'].schema.format")
+                        .value("binary"));
+    }
+
+    @Test
+    @DisplayName("HU-11: el superadministrador también puede descargar QR")
+    void descargarQrComoSuperadministrador() throws Exception {
+        String id = JsonPath.read(crearFicha(nombreCientificoUnico()), "$.id");
+        String token = obtenerToken(CORREO_SUPERADMIN, CONTRASENA_SUPERADMIN);
+
+        mockMvc.perform(get(RUTA_FICHAS + "/" + id + "/qr")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(header().string(HttpHeaders.CONTENT_TYPE, "image/png"));
+    }
+
+    @Test
+    @DisplayName("HU-11: usuarios sin rol administrativo no descargan el QR")
+    void descargarQrSinPermisos() throws Exception {
+        String id = JsonPath.read(crearFicha(nombreCientificoUnico()), "$.id");
+
+        esperarError(mockMvc.perform(get(RUTA_FICHAS + "/" + id + "/qr")
+                        .header(HttpHeaders.AUTHORIZATION,
+                                "Bearer " + tokenDeUsuarioNuevo(Role.USUARIO_REGISTRADO))),
+                403, "No tiene permisos para realizar esta acción.");
+        esperarError(mockMvc.perform(get(RUTA_FICHAS + "/" + id + "/qr")),
+                401, "Debe iniciar sesión para acceder a este recurso.");
+    }
+
+    @Test
+    @DisplayName("HU-11: no se genera QR para una ficha inexistente")
+    void descargarQrDeFichaInexistente() throws Exception {
+        esperarError(mockMvc.perform(get(RUTA_FICHAS + "/" + UUID.randomUUID() + "/qr")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + tokenAdministrador)),
+                404, "La ficha taxonómica solicitada no existe.");
     }
 
     // HU-7 (v2.0): varias fotos por ficha

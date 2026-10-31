@@ -24,6 +24,7 @@ public interface ComponentMapper {
 
     /** Copia el texto editable; el tipo, las fotos y la fecha los maneja el servicio. */
     @Mapping(target = "tipo", ignore = true)
+    @Mapping(target = "orden", ignore = true)
     @Mapping(target = "fotos", ignore = true)
     @Mapping(target = "fechaActualizacion", ignore = true)
     void actualizar(ComponentUpdateRequest solicitud, @MappingTarget WetlandComponent componente);

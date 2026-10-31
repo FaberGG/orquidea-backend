@@ -1,0 +1,44 @@
+{
+  "contractVersion": 1,
+  "prefix": "orquideamobileapp://species/",
+  "valid": [
+    {
+      "text": "orquideamobileapp://species/8a48268f-50f0-44f2-a86d-882b4e3ea101",
+      "speciesId": "8a48268f-50f0-44f2-a86d-882b4e3ea101"
+    },
+    {
+      "text": "ORQUIDEAMOBILEAPP://SPECIES/8A48268F-50F0-44F2-A86D-882B4E3EA101",
+      "speciesId": "8a48268f-50f0-44f2-a86d-882b4e3ea101"
+    }
+  ],
+  "invalid": [
+    {
+      "text": "https://example.org/species/8a48268f-50f0-44f2-a86d-882b4e3ea101",
+      "reason": "scheme externo"
+    },
+    {
+      "text": "orquideamobileapp://species/not-a-uuid",
+      "reason": "UUID malformado"
+    },
+    {
+      "text": "orquideamobileapp://species/00000000-0000-0000-0000-000000000000",
+      "reason": "UUID nulo"
+    },
+    {
+      "text": "orquideamobileapp://species/8a48268f-50f0-44f2-a86d-882b4e3ea101?admin=true",
+      "reason": "parámetro no permitido"
+    },
+    {
+      "text": "orquideamobileapp://species/8a48268f-50f0-44f2-a86d-882b4e3ea101/extra",
+      "reason": "segmento adicional"
+    },
+    {
+      "text": "orquideamobileapp://species/ 8a48268f-50f0-44f2-a86d-882b4e3ea101",
+      "reason": "espacio interno"
+    },
+    {
+      "text": "orquideamobileapp://species/8a48268f-50f0-44f2-a86d-882b4e3ea101\u0000",
+      "reason": "carácter de control"
+    }
+  ]
+}
