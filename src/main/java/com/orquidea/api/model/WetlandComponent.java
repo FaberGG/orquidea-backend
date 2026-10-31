@@ -3,8 +3,6 @@ package com.orquidea.api.model;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.OrderBy;
@@ -37,9 +35,8 @@ import java.util.List;
 public class WetlandComponent {
 
     @Id
-    @Enumerated(EnumType.STRING)
-    @Column(length = 20)
-    private ComponentType tipo;
+    @Column(length = 100)
+    private String tipo;
 
     @Column(nullable = false, length = 100)
     private String nombre;
@@ -47,6 +44,10 @@ public class WetlandComponent {
     /** Nulo mientras el componente no tenga información publicada. */
     @Column(length = 5000)
     private String descripcion;
+
+    /** Posición en el listado público: los componentes nuevos se agregan al final. */
+    @Column(nullable = false)
+    private int orden;
 
     @Builder.Default
     @OneToMany(mappedBy = "componente", cascade = CascadeType.ALL, orphanRemoval = true)

@@ -1,6 +1,5 @@
 package com.orquidea.api.dto;
 
-import com.orquidea.api.model.ComponentType;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -17,8 +16,9 @@ import java.util.List;
 @Schema(description = "Componente del humedal con su contenido informativo")
 public class ComponentDto {
 
-    @Schema(description = "Componente; identifica el recurso en la ruta", example = "AVES")
-    private ComponentType tipo;
+    @Schema(description = "Código único del componente, generado a partir de su nombre; identifica el recurso en la ruta",
+        example = "COMPONENTE_HIDRICO")
+    private String tipo;
 
     @Schema(description = "Nombre para mostrar", example = "Aves")
     private String nombre;
