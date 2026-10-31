@@ -9,6 +9,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.UUID;
 
 @Data
@@ -48,8 +49,12 @@ public class TaxonDto {
     @Schema(description = "Categoría UICN", example = "LC")
     private ConservationStatus estadoConservacion;
 
-    @Schema(description = "URL pública de la foto", example = "http://localhost:9000/orquidea/fichas/5b0c7f0e.jpg")
+    @Schema(description = "URL pública de la foto principal; igual a fotos[0].url",
+            example = "http://localhost:9000/orquidea/fichas/5b0c7f0e.jpg")
     private String urlFoto;
+
+    @Schema(description = "Fotos de la ficha en orden de carga; la primera es la principal")
+    private List<TaxonPhotoDto> fotos;
 
     @Schema(description = "Fecha de creación", example = "2026-09-28T15:30:00Z")
     private Instant fechaCreacion;

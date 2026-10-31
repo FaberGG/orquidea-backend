@@ -33,6 +33,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.endsWith;
 import static org.hamcrest.Matchers.hasItem;
 import static org.hamcrest.Matchers.startsWith;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
@@ -45,6 +46,7 @@ class TaxonControllerTest extends IntegrationTestBase {
     private static final String RUTA_FICHAS = "/api/fichas-taxonomicas";
     private static final String MENSAJE_OBLIGATORIOS = "Debes completar todos los campos obligatorios.";
     private static final String MENSAJE_FORMATO = "El formato de la imagen no es válido.";
+    private static final String MENSAJE_SIN_FOTO = "Debes seleccionar una imagen.";
 
     private static byte[] png;
     private static byte[] jpeg;
@@ -83,6 +85,8 @@ class TaxonControllerTest extends IntegrationTestBase {
                 .andExpect(jsonPath("$.rolEnHumedal").value("Dispersor de semillas"))
                 .andExpect(jsonPath("$.estadoConservacion").value("LC"))
                 .andExpect(jsonPath("$.urlFoto", endsWith(".png")))
+                .andExpect(jsonPath("$.fotos.length()").value(1))
+                .andExpect(jsonPath("$.fotos[0].id").isNotEmpty())
                 .andExpect(jsonPath("$.fechaCreacion").isNotEmpty())
                 .andExpect(jsonPath("$.fotoClave").doesNotExist())
                 .andReturn().getResponse().getContentAsString();
@@ -110,7 +114,7 @@ class TaxonControllerTest extends IntegrationTestBase {
     void creacionExitosaComoSuperadministrador() throws Exception {
         String token = obtenerToken(CORREO_SUPERADMIN, CONTRASENA_SUPERADMIN);
 
-        crear(token, formulario(nombreCientificoUnico()), new MockMultipartFile("foto", "azulejo.jpg", "image/jpeg", jpeg))
+        crear(token, formulario(nombreCientificoUnico()), new MockMultipartFile("fotos", "azulejo.jpg", "image/jpeg", jpeg))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.urlFoto", endsWith(".jpg")));
     }
@@ -140,15 +144,15 @@ class TaxonControllerTest extends IntegrationTestBase {
     @Test
     @DisplayName("Escenario 2: la foto es obligatoria")
     void sinFoto() throws Exception {
-        esperarError(crear(tokenAdministrador, formulario(nombreCientificoUnico()), null), 400, MENSAJE_OBLIGATORIOS);
+        esperarError(crear(tokenAdministrador, formulario(nombreCientificoUnico()), null), 400, MENSAJE_SIN_FOTO);
     }
 
     @Test
     @DisplayName("Escenario 2: un archivo vacío cuenta como foto faltante")
     void fotoVacia() throws Exception {
-        MockMultipartFile vacia = new MockMultipartFile("foto", "vacia.png", "image/png", new byte[0]);
+        MockMultipartFile vacia = new MockMultipartFile("fotos", "vacia.png", "image/png", new byte[0]);
 
-        esperarError(crear(tokenAdministrador, formulario(nombreCientificoUnico()), vacia), 400, MENSAJE_OBLIGATORIOS);
+        esperarError(crear(tokenAdministrador, formulario(nombreCientificoUnico()), vacia), 400, MENSAJE_SIN_FOTO);
     }
 
     // Escenario 3: formato de imagen no soportado
@@ -156,7 +160,7 @@ class TaxonControllerTest extends IntegrationTestBase {
     @Test
     @DisplayName("Escenario 3: un archivo que no es imagen, aunque diga ser png")
     void archivoDisfrazadoDePng() throws Exception {
-        MockMultipartFile falsa = new MockMultipartFile("foto", "foto.png", "image/png",
+        MockMultipartFile falsa = new MockMultipartFile("fotos", "foto.png", "image/png",
                 "esto no es una imagen".getBytes(StandardCharsets.UTF_8));
 
         esperarError(crear(tokenAdministrador, formulario(nombreCientificoUnico()), falsa), 400, MENSAJE_FORMATO);
@@ -165,7 +169,7 @@ class TaxonControllerTest extends IntegrationTestBase {
     @Test
     @DisplayName("Escenario 3: una imagen real en formato no permitido (gif)")
     void imagenGif() throws Exception {
-        MockMultipartFile gif = new MockMultipartFile("foto", "foto.gif", "image/gif", imagen("gif"));
+        MockMultipartFile gif = new MockMultipartFile("fotos", "foto.gif", "image/gif", imagen("gif"));
 
         esperarError(crear(tokenAdministrador, formulario(nombreCientificoUnico()), gif), 400, MENSAJE_FORMATO);
     }
@@ -176,7 +180,7 @@ class TaxonControllerTest extends IntegrationTestBase {
     @DisplayName("La foto no puede superar 10 MB")
     void imagenDemasiadoGrande() throws Exception {
         byte[] grande = Arrays.copyOf(png, 10 * 1024 * 1024 + 1);
-        MockMultipartFile foto = new MockMultipartFile("foto", "grande.png", "image/png", grande);
+        MockMultipartFile foto = new MockMultipartFile("fotos", "grande.png", "image/png", grande);
 
         esperarError(crear(tokenAdministrador, formulario(nombreCientificoUnico()), foto), 413,
                 "La imagen supera el tamaño máximo permitido de 10 MB.");
@@ -258,32 +262,16 @@ class TaxonControllerTest extends IntegrationTestBase {
     }
 
     @Test
-    @DisplayName("HU-8 escenario 1: un campo de archivo vacío (así lo envía el navegador) conserva la foto")
-    void edicionConCampoDeFotoVacio() throws Exception {
+    @DisplayName("HU-8: la edición solo cambia el texto; un archivo enviado no modifica las fotos")
+    void edicionIgnoraFotos() throws Exception {
         String scientificName = nombreCientificoUnico();
         String creada = crearFicha(scientificName);
-        MockMultipartFile sinSeleccionar = new MockMultipartFile("foto", "", "application/octet-stream", new byte[0]);
+        MockMultipartFile fotoJpg = new MockMultipartFile("fotos", "nueva.jpg", "image/jpeg", jpeg);
 
-        editar(tokenAdministrador, JsonPath.read(creada, "$.id"), formulario(scientificName), sinSeleccionar)
+        editar(tokenAdministrador, JsonPath.read(creada, "$.id"), formulario(scientificName), fotoJpg)
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.urlFoto").value((String) JsonPath.read(creada, "$.urlFoto")));
-    }
-
-    @Test
-    @DisplayName("HU-8 escenario 1: una foto nueva reemplaza a la anterior, que se borra del almacenamiento")
-    void edicionConFotoNueva() throws Exception {
-        String scientificName = nombreCientificoUnico();
-        String creada = crearFicha(scientificName);
-        String urlAnterior = JsonPath.read(creada, "$.urlFoto");
-        MockMultipartFile fotoJpg = new MockMultipartFile("foto", "nueva.jpg", "image/jpeg", jpeg);
-
-        String editada = editar(tokenAdministrador, JsonPath.read(creada, "$.id"), formulario(scientificName), fotoJpg)
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.urlFoto", endsWith(".jpg")))
-                .andReturn().getResponse().getContentAsString();
-
-        assertThat(estadoHttp(JsonPath.read(editada, "$.urlFoto"))).isEqualTo(200);
-        assertThat(estadoHttp(urlAnterior)).isEqualTo(404);
+                .andExpect(jsonPath("$.urlFoto").value((String) JsonPath.read(creada, "$.urlFoto")))
+                .andExpect(jsonPath("$.fotos.length()").value(1));
     }
 
     @Test
@@ -312,14 +300,15 @@ class TaxonControllerTest extends IntegrationTestBase {
     }
 
     @Test
-    @DisplayName("HU-8: una foto con formato no permitido no modifica la ficha ni su foto")
-    void edicionConFotoInvalida() throws Exception {
+    @DisplayName("HU-8: un formulario inválido no modifica la ficha ni su foto")
+    void edicionInvalidaConservaFoto() throws Exception {
         String scientificName = nombreCientificoUnico();
         String creada = crearFicha(scientificName);
         String id = JsonPath.read(creada, "$.id");
-        MockMultipartFile gif = new MockMultipartFile("foto", "foto.gif", "image/gif", imagen("gif"));
+        Map<String, String> datos = formulario(scientificName);
+        datos.remove("genus");
 
-        esperarError(editar(tokenAdministrador, id, formulario(scientificName), gif), 400, MENSAJE_FORMATO);
+        esperarError(editar(tokenAdministrador, id, datos, null), 400, MENSAJE_OBLIGATORIOS);
         mockMvc.perform(get(RUTA_FICHAS + "/" + id))
                 .andExpect(jsonPath("$.urlFoto").value((String) JsonPath.read(creada, "$.urlFoto")));
     }
@@ -444,7 +433,132 @@ class TaxonControllerTest extends IntegrationTestBase {
             "El valor del parámetro 'categoria' no es válido.");
     }
 
+    // HU-7 (v2.0): varias fotos por ficha
+
+    @Test
+    @DisplayName("HU-7 escenario 4: con varias fotos se guardan todas en orden y la primera es la principal")
+    void creacionConVariasFotos() throws Exception {
+        MockMultipartHttpServletRequestBuilder solicitud = multipart(RUTA_FICHAS);
+        solicitud.file(fotoPng());
+        solicitud.file(new MockMultipartFile("fotos", "segunda.jpg", "image/jpeg", jpeg));
+
+        String respuesta = enviar(solicitud, tokenAdministrador, formulario(nombreCientificoUnico()), null)
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.fotos.length()").value(2))
+                .andExpect(jsonPath("$.fotos[0].url", endsWith(".png")))
+                .andExpect(jsonPath("$.fotos[1].url", endsWith(".jpg")))
+                .andReturn().getResponse().getContentAsString();
+        assertThat((String) JsonPath.read(respuesta, "$.urlFoto")).isEqualTo(JsonPath.read(respuesta, "$.fotos[0].url"));
+    }
+
+    @Test
+    @DisplayName("HU-7: no se puede crear una ficha con más de 10 fotos")
+    void creacionConDemasiadasFotos() throws Exception {
+        MockMultipartHttpServletRequestBuilder solicitud = multipart(RUTA_FICHAS);
+        for (int i = 0; i < 11; i++) {
+            solicitud.file(fotoPng());
+        }
+
+        esperarError(enviar(solicitud, tokenAdministrador, formulario(nombreCientificoUnico()), null), 409,
+                "La ficha ya tiene el máximo de 10 fotos.");
+    }
+
+    @Test
+    @DisplayName("HU-7: una foto agregada queda al final y la principal no cambia")
+    void agregarFoto() throws Exception {
+        String creada = crearFicha(nombreCientificoUnico());
+        String id = JsonPath.read(creada, "$.id");
+
+        agregarFoto(tokenAdministrador, id, new MockMultipartFile("foto", "otra.jpg", "image/jpeg", jpeg))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.id").value(id))
+                .andExpect(jsonPath("$.fotos.length()").value(2))
+                .andExpect(jsonPath("$.fotos[1].url", endsWith(".jpg")))
+                .andExpect(jsonPath("$.urlFoto").value((String) JsonPath.read(creada, "$.urlFoto")));
+    }
+
+    @Test
+    @DisplayName("HU-7: agregar una foto valida el archivo")
+    void agregarFotoInvalida() throws Exception {
+        String id = JsonPath.read(crearFicha(nombreCientificoUnico()), "$.id");
+
+        esperarError(agregarFoto(tokenAdministrador, id, null), 400, MENSAJE_SIN_FOTO);
+        esperarError(agregarFoto(tokenAdministrador, id,
+                new MockMultipartFile("foto", "foto.gif", "image/gif", imagen("gif"))), 400, MENSAJE_FORMATO);
+        esperarError(agregarFoto(tokenAdministrador, UUID.randomUUID().toString(), fotoParaAgregar()), 404,
+                "La ficha taxonómica solicitada no existe.");
+    }
+
+    @Test
+    @DisplayName("HU-7: una ficha admite como máximo 10 fotos")
+    void agregarFotoSobreElMaximo() throws Exception {
+        String id = JsonPath.read(crearFicha(nombreCientificoUnico()), "$.id");
+        for (int i = 1; i < 10; i++) {
+            agregarFoto(tokenAdministrador, id, fotoParaAgregar()).andExpect(status().isCreated());
+        }
+
+        esperarError(agregarFoto(tokenAdministrador, id, fotoParaAgregar()), 409,
+                "La ficha ya tiene el máximo de 10 fotos.");
+    }
+
+    @Test
+    @DisplayName("HU-7: al eliminar la foto principal la siguiente pasa a serlo y la eliminada se borra del almacenamiento")
+    void eliminarFotoPrincipal() throws Exception {
+        String id = JsonPath.read(crearFicha(nombreCientificoUnico()), "$.id");
+        String conDos = agregarFoto(tokenAdministrador, id, fotoParaAgregar())
+                .andReturn().getResponse().getContentAsString();
+        String idPrincipal = JsonPath.read(conDos, "$.fotos[0].id");
+        String urlPrincipal = JsonPath.read(conDos, "$.fotos[0].url");
+        String urlSegunda = JsonPath.read(conDos, "$.fotos[1].url");
+
+        eliminarFoto(tokenAdministrador, id, idPrincipal).andExpect(status().isNoContent());
+
+        mockMvc.perform(get(RUTA_FICHAS + "/" + id))
+                .andExpect(jsonPath("$.fotos.length()").value(1))
+                .andExpect(jsonPath("$.urlFoto").value(urlSegunda));
+        assertThat(estadoHttp(urlPrincipal)).isEqualTo(404);
+    }
+
+    @Test
+    @DisplayName("HU-7: la ficha conserva siempre al menos una foto")
+    void eliminarUnicaFoto() throws Exception {
+        String creada = crearFicha(nombreCientificoUnico());
+        String id = JsonPath.read(creada, "$.id");
+
+        esperarError(eliminarFoto(tokenAdministrador, id, JsonPath.read(creada, "$.fotos[0].id")), 409,
+                "La ficha debe conservar al menos una foto.");
+        esperarError(eliminarFoto(tokenAdministrador, id, UUID.randomUUID().toString()), 404,
+                "La foto solicitada no existe en esta ficha.");
+    }
+
+    @Test
+    @DisplayName("HU-7: un usuario registrado no puede gestionar las fotos")
+    void usuarioRegistradoNoGestionaFotos() throws Exception {
+        String creada = crearFicha(nombreCientificoUnico());
+        String id = JsonPath.read(creada, "$.id");
+        String token = tokenDeUsuarioNuevo(Role.USUARIO_REGISTRADO);
+
+        agregarFoto(token, id, fotoParaAgregar()).andExpect(status().isForbidden());
+        eliminarFoto(token, id, JsonPath.read(creada, "$.fotos[0].id")).andExpect(status().isForbidden());
+    }
+
     // Utilidades
+
+    private ResultActions agregarFoto(String token, String id, MockMultipartFile foto) throws Exception {
+        return enviar(multipart(RUTA_FICHAS + "/" + id + "/fotos"), token, Map.of(), foto);
+    }
+
+    private ResultActions eliminarFoto(String token, String id, String idFoto) throws Exception {
+        var solicitud = delete(RUTA_FICHAS + "/" + id + "/fotos/" + idFoto);
+        if (token != null) {
+            solicitud.header(HttpHeaders.AUTHORIZATION, "Bearer " + token);
+        }
+        return mockMvc.perform(solicitud);
+    }
+
+    private static MockMultipartFile fotoParaAgregar() {
+        return new MockMultipartFile("foto", "otra.png", "image/png", png);
+    }
 
     private ResultActions crear(String token, Map<String, String> datos, MockMultipartFile foto) throws Exception {
         return enviar(multipart(RUTA_FICHAS), token, datos, foto);
@@ -501,7 +615,7 @@ class TaxonControllerTest extends IntegrationTestBase {
     }
 
     private static MockMultipartFile fotoPng() {
-        return new MockMultipartFile("foto", "azulejo.png", "image/png", png);
+        return new MockMultipartFile("fotos", "azulejo.png", "image/png", png);
     }
 
     private static String nombreCientificoUnico() {

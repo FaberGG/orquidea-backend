@@ -2,6 +2,7 @@ package com.orquidea.api.dto;
 
 import com.orquidea.api.model.TaxonCategory;
 import com.orquidea.api.model.ConservationStatus;
+import io.swagger.v3.oas.annotations.media.ArraySchema;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -12,9 +13,12 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.util.List;
+
 /**
  * Formulario multipart para crear (HU-7) o editar (HU-8) una ficha: un campo de texto por atributo
- * más el archivo "foto". Todos los campos de texto son obligatorios en ambos casos.
+ * más el campo "fotos", repetido por archivo, al crear. Todos los campos de texto son obligatorios en ambos casos;
+ * al editar las fotos se ignoran porque tienen sus propios endpoints.
  */
 @Data
 @Builder
@@ -68,12 +72,8 @@ public class TaxonRequest {
     @Schema(description = "Categoría UICN", example = "LC")
     private ConservationStatus estadoConservacion;
 
-    @NotNull(message = MENSAJE_OBLIGATORIOS, groups = OnCreate.class)
-    @Schema(description = "Foto de la especie, jpg o png, máximo 10 MB. Obligatoria al crear; al editar, "
-            + "si no se envía (o llega vacía) se conserva la actual", type = "string", format = "binary")
-    private MultipartFile foto;
-
-    /** Reglas que solo aplican al crear (HU-7); al editar (HU-8) la foto es opcional. */
-    public interface OnCreate {
-    }
+    @ArraySchema(arraySchema = @Schema(description = "Fotos de la especie al crear: de 1 a 10, jpg o png, máximo "
+            + "10 MB cada una; la primera es la principal. Al editar se ignoran"),
+            schema = @Schema(type = "string", format = "binary"))
+    private List<MultipartFile> fotos;
 }

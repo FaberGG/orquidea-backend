@@ -16,8 +16,8 @@ spring:
   servlet:
     multipart:
       max-file-size: ${app.storage.tamano-maximo-imagen}
-      # Margen para los campos de texto del formulario que acompañan a la foto
-      max-request-size: 12MB
+      # Al crear una ficha llegan hasta 10 fotos de 10 MB, más los campos de texto del formulario
+      max-request-size: 102MB
   docker:
     compose:
       # Al correr desde el IDE levanta db y pgadmin, y los deja encendidos al detener la app.
@@ -54,6 +54,8 @@ app:
   administradores:
     limite: ${ADMINISTRADORES_LIMITE:3}
   componentes:
+    fotos-maximas: 10
+  fichas:
     fotos-maximas: 10
   correo:
     remitente: ${MAIL_REMITENTE:}
