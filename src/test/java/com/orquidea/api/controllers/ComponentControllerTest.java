@@ -27,6 +27,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 
 class ComponentControllerTest extends IntegrationTestBase {
 
@@ -35,6 +36,8 @@ class ComponentControllerTest extends IntegrationTestBase {
     private static final String MENSAJE_SIN_PERMISOS = "No tiene permisos para realizar esta acción.";
     private static final String MENSAJE_SIN_SESION = "Debe iniciar sesión para acceder a este recurso.";
     private static final int FOTOS_MAXIMAS = 10;
+    private static final String MENSAJE_OBLIGATORIOS_CREACION = "Debes completar el nombre y la descripción del componente.";
+    private static final String MENSAJE_DUPLICADO = "Ya existe un componente con ese nombre.";
 
     @Autowired
     private JdbcTemplate jdbc;
@@ -51,7 +54,8 @@ class ComponentControllerTest extends IntegrationTestBase {
     @BeforeEach
     void prepararComponentes() throws Exception {
         jdbc.update("DELETE FROM fotos_componente");
-        jdbc.update("UPDATE componentes_humedal SET descripcion = NULL");
+        jdbc.update("DELETE FROM componentes_humedal WHERE tipo NOT IN ('INSECTOS', 'AVES', 'FLORA', 'OTROS')");
+        jdbc.update("UPDATE componentes_humedal SET nombre = initcap(tipo), descripcion = NULL");
         tokenAdministrador = tokenDeUsuarioNuevo(Role.ADMINISTRADOR);
     }
 
@@ -79,7 +83,7 @@ class ComponentControllerTest extends IntegrationTestBase {
     @Test
     @DisplayName("HU-14: un componente que no existe responde 404")
     void componenteInexistente() throws Exception {
-        esperarError(mockMvc.perform(get(RUTA + "/PECES")), 404, "El recurso solicitado no existe.");
+        esperarError(mockMvc.perform(get(RUTA + "/PECES")), 404, "El componente solicitado no existe.");
     }
 
     // HU-15
@@ -183,8 +187,113 @@ class ComponentControllerTest extends IntegrationTestBase {
         esperarError(agregarFoto(null, "AVES", fotoPng()), 401, MENSAJE_SIN_SESION);
     }
 
+    // HU-25
+
+    @Test
+    @DisplayName("HU-25 escenario 1: el administrador crea un componente y aparece en la sección de componentes")
+    void creacionDeComponente() throws Exception {
+        crear(tokenAdministrador, cuerpo("Componente hídrico", "Nacimientos de agua que alimentan el humedal."))
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.tipo").value("COMPONENTE_HIDRICO"))
+            .andExpect(jsonPath("$.nombre").value("Componente hídrico"))
+            .andExpect(jsonPath("$.descripcion").value("Nacimientos de agua que alimentan el humedal."))
+            .andExpect(jsonPath("$.tieneContenido").value(true))
+            .andExpect(jsonPath("$.fotos").isEmpty());
+
+        mockMvc.perform(get(RUTA))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$[*].tipo", contains("INSECTOS", "AVES", "FLORA", "OTROS", "COMPONENTE_HIDRICO")));
+        mockMvc.perform(get(RUTA + "/COMPONENTE_HIDRICO"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.nombre").value("Componente hídrico"));
+    }
+
+    @Test
+    @DisplayName("HU-25: el superadministrador también puede crear componentes (HU-6)")
+    void creacionComoSuperadministrador() throws Exception {
+        String token = obtenerToken(CORREO_SUPERADMIN, CONTRASENA_SUPERADMIN);
+
+        crear(token, cuerpo("Fauna acuática", "Peces y anfibios del humedal.")).andExpect(status().isCreated());
+    }
+
+    @Test
+    @DisplayName("HU-25 escenario 2: nombre o descripción incompletos no crean el componente")
+    void creacionConCamposIncompletos() throws Exception {
+        esperarError(crear(tokenAdministrador, cuerpo("", "Texto")), 400, MENSAJE_OBLIGATORIOS_CREACION);
+        esperarError(crear(tokenAdministrador, cuerpo("Suelos", "   ")), 400, MENSAJE_OBLIGATORIOS_CREACION);
+        esperarError(crear(tokenAdministrador, "{\"nombre\":\"Suelos\"}"), 400, MENSAJE_OBLIGATORIOS_CREACION);
+        esperarError(crear(tokenAdministrador, "{}"), 400, MENSAJE_OBLIGATORIOS_CREACION);
+
+        mockMvc.perform(get(RUTA)).andExpect(jsonPath("$.length()").value(4));
+    }
+
+    @Test
+    @DisplayName("HU-25 escenario 3: un nombre repetido se rechaza sin distinguir mayúsculas ni tildes")
+    void creacionConNombreDuplicado() throws Exception {
+        crear(tokenAdministrador, cuerpo("Componente hídrico", "Texto")).andExpect(status().isCreated());
+
+        esperarError(crear(tokenAdministrador, cuerpo("Componente hídrico", "Otro texto")), 409, MENSAJE_DUPLICADO);
+        esperarError(crear(tokenAdministrador, cuerpo("COMPONENTE HÍDRICO", "Otro texto")), 409, MENSAJE_DUPLICADO);
+        esperarError(crear(tokenAdministrador, cuerpo("Componente hidrico", "Otro texto")), 409, MENSAJE_DUPLICADO);
+        esperarError(crear(tokenAdministrador, cuerpo("Aves", "Otro texto")), 409, MENSAJE_DUPLICADO);
+
+        mockMvc.perform(get(RUTA)).andExpect(jsonPath("$.length()").value(5));
+    }
+
+    @Test
+    @DisplayName("HU-25: un nombre sin letras ni números no genera código y se rechaza")
+    void creacionConNombreSinCaracteresValidos() throws Exception {
+        esperarError(crear(tokenAdministrador, cuerpo("???", "Texto")), 400,
+            "El nombre del componente debe contener letras o números.");
+    }
+
+    @Test
+    @DisplayName("HU-25: solo administradores pueden crear componentes")
+    void creacionSinPermisos() throws Exception {
+        String token = tokenDeUsuarioNuevo(Role.USUARIO_REGISTRADO);
+
+        esperarError(crear(token, cuerpo("Suelos", "Texto")), 403, MENSAJE_SIN_PERMISOS);
+        esperarError(crear(null, cuerpo("Suelos", "Texto")), 401, MENSAJE_SIN_SESION);
+    }
+
+    @Test
+    @DisplayName("HU-25 escenario 4: las fotos del componente nuevo se agregan por su código y solo admiten jpg o png")
+    void fotosDelComponenteNuevo() throws Exception {
+        crear(tokenAdministrador, cuerpo("Componente hídrico", "Texto")).andExpect(status().isCreated());
+
+        agregarFoto(tokenAdministrador, "COMPONENTE_HIDRICO", fotoPng())
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.fotos[0].url", endsWith(".png")));
+
+        MockMultipartFile gif = new MockMultipartFile("foto", "foto.gif", "image/gif", imagen("gif"));
+        esperarError(agregarFoto(tokenAdministrador, "COMPONENTE_HIDRICO", gif), 400, "El formato de la imagen no es válido.");
+    }
+
+    @Test
+    @DisplayName("HU-15 (ajuste): la edición funciona con los componentes nuevos y no admite el nombre de otro")
+    void edicionDeComponenteNuevo() throws Exception {
+        crear(tokenAdministrador, cuerpo("Componente hídrico", "Texto")).andExpect(status().isCreated());
+
+        editar(tokenAdministrador, "COMPONENTE_HIDRICO", cuerpo("Agua del humedal", "Texto actualizado."))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.tipo").value("COMPONENTE_HIDRICO"))
+            .andExpect(jsonPath("$.nombre").value("Agua del humedal"));
+        editar(tokenAdministrador, "COMPONENTE_HIDRICO", cuerpo("Agua del humedal", "Mismo nombre, otro texto."))
+            .andExpect(status().isOk());
+
+        esperarError(editar(tokenAdministrador, "COMPONENTE_HIDRICO", cuerpo("aves", "Texto")), 409, MENSAJE_DUPLICADO);
+    }
+
     // Utilidades
 
+    private ResultActions crear(String token, String cuerpo) throws Exception {
+        var solicitud = post(RUTA).contentType(MediaType.APPLICATION_JSON).content(cuerpo);
+        if (token != null) {
+            solicitud.header(HttpHeaders.AUTHORIZATION, "Bearer " + token);
+        }
+        return mockMvc.perform(solicitud);
+    }
+    
     private ResultActions editar(String token, String tipo, String cuerpo) throws Exception {
         var solicitud = put(RUTA + "/" + tipo).contentType(MediaType.APPLICATION_JSON).content(cuerpo);
         if (token != null) {
