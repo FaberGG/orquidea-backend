@@ -592,6 +592,18 @@ class TaxonControllerTest extends IntegrationTestBase {
     }
 
     @Test
+    @DisplayName("HU-7 (ajuste): la foto agregada no puede superar 10 MB y la ficha no cambia")
+    void agregarFotoDemasiadoGrande() throws Exception {
+        String id = JsonPath.read(crearFicha(nombreCientificoUnico()), "$.id");
+        byte[] grande = Arrays.copyOf(png, 10 * 1024 * 1024 + 1);
+
+        esperarError(agregarFoto(tokenAdministrador, id, new MockMultipartFile("foto", "grande.png", "image/png", grande)),
+                413, "La imagen supera el tamaño máximo permitido de 10 MB.");
+        mockMvc.perform(get(RUTA_FICHAS + "/" + id))
+                .andExpect(jsonPath("$.fotos.length()").value(1));
+    }
+
+    @Test
     @DisplayName("HU-7 (ajuste): una ficha admite como máximo 10 fotos")
     void agregarFotoSobreElMaximo() throws Exception {
         String id = JsonPath.read(crearFicha(nombreCientificoUnico()), "$.id");
