@@ -205,10 +205,21 @@ class OccurrenceControllerTest extends IntegrationTestBase {
     }
 
     @Test
-    @DisplayName("HU-18: solo un USUARIO REGISTRADO crea reportes")
-    void permisosDeCreacion() throws Exception {
+    @DisplayName("HU-18: sin sesión no se pueden crear reportes")
+    void creacionSinSesion() throws Exception {
         esperarError(crear(null, formulario(), null), 401, "Debe iniciar sesión para acceder a este recurso.");
-        esperarError(crear(tokenAdministrador, formulario(), null), 403, "No tiene permisos para realizar esta acción.");
+    }
+
+    @Test
+    @DisplayName("HU-18 (v2.0): administradores y superadministradores también crean reportes, que quedan PENDIENTES")
+    void creacionComoAdministradores() throws Exception {
+        String tokenSuperadministrador = obtenerToken(CORREO_SUPERADMIN, CONTRASENA_SUPERADMIN);
+
+        for (String token : new String[]{tokenAdministrador, tokenSuperadministrador}) {
+            crear(token, formulario(), null)
+                    .andExpect(status().isCreated())
+                    .andExpect(jsonPath("$.estado").value("PENDIENTE"));
+        }
     }
 
     // HU-19: revisión
