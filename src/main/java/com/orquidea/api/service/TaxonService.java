@@ -24,6 +24,7 @@ import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 
@@ -88,7 +89,7 @@ public class TaxonService {
         return aDto(taxonRepository.saveAndFlush(ficha));
     }
 
-    /** HU-7 (v2.0): agrega una foto al final (jpg o png, máx. 10 MB) si la ficha no llegó al máximo. */
+    /** HU-7 (ajuste): agrega una foto al final (jpg o png, máx. 10 MB) si la ficha no llegó al máximo. */
     @Transactional
     public TaxonDto agregarFoto(UUID id, MultipartFile archivo) {
         Taxon ficha = buscar(id);
@@ -96,11 +97,12 @@ public class TaxonService {
             throw maximoDeFotos();
         }
         agregar(ficha, imageValidator.validar(archivo, MENSAJE_FOTO_OBLIGATORIA));
+        ficha.setFechaActualizacion(Instant.now());
         return aDto(taxonRepository.saveAndFlush(ficha));
     }
 
     /**
-     * HU-7 (v2.0): elimina una foto y la borra del almacenamiento. Si era la principal, la siguiente pasa a
+     * HU-7 (ajuste): elimina una foto y la borra del almacenamiento. Si era la principal, la siguiente pasa a
      * serlo. La ficha conserva siempre al menos una foto.
      */
     @Transactional
@@ -114,6 +116,7 @@ public class TaxonService {
             throw new OperationNotAllowedException("La ficha debe conservar al menos una foto.");
         }
         ficha.getFotos().remove(foto);
+        ficha.setFechaActualizacion(Instant.now());
         taxonRepository.saveAndFlush(ficha);
         alConfirmar(() -> storageService.eliminar(foto.getFotoClave()));
     }

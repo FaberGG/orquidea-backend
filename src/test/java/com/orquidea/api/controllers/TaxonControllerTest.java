@@ -534,10 +534,10 @@ class TaxonControllerTest extends IntegrationTestBase {
                 404, "La ficha taxonómica solicitada no existe.");
     }
 
-    // HU-7 (v2.0): varias fotos por ficha
+    // HU-7 (ajuste): varias fotos por ficha
 
     @Test
-    @DisplayName("HU-7 escenario 4: con varias fotos se guardan todas en orden y la primera es la principal")
+    @DisplayName("HU-7 (ajuste) escenario 4: con varias fotos se guardan todas en orden y la primera es la principal")
     void creacionConVariasFotos() throws Exception {
         MockMultipartHttpServletRequestBuilder solicitud = multipart(RUTA_FICHAS);
         solicitud.file(fotoPng());
@@ -553,7 +553,7 @@ class TaxonControllerTest extends IntegrationTestBase {
     }
 
     @Test
-    @DisplayName("HU-7: no se puede crear una ficha con más de 10 fotos")
+    @DisplayName("HU-7 (ajuste): no se puede crear una ficha con más de 10 fotos")
     void creacionConDemasiadasFotos() throws Exception {
         MockMultipartHttpServletRequestBuilder solicitud = multipart(RUTA_FICHAS);
         for (int i = 0; i < 11; i++) {
@@ -565,7 +565,7 @@ class TaxonControllerTest extends IntegrationTestBase {
     }
 
     @Test
-    @DisplayName("HU-7: una foto agregada queda al final y la principal no cambia")
+    @DisplayName("HU-7 (ajuste): una foto agregada queda al final, la principal no cambia y la ficha registra la modificación")
     void agregarFoto() throws Exception {
         String creada = crearFicha(nombreCientificoUnico());
         String id = JsonPath.read(creada, "$.id");
@@ -575,11 +575,12 @@ class TaxonControllerTest extends IntegrationTestBase {
                 .andExpect(jsonPath("$.id").value(id))
                 .andExpect(jsonPath("$.fotos.length()").value(2))
                 .andExpect(jsonPath("$.fotos[1].url", endsWith(".jpg")))
-                .andExpect(jsonPath("$.urlFoto").value((String) JsonPath.read(creada, "$.urlFoto")));
+                .andExpect(jsonPath("$.urlFoto").value((String) JsonPath.read(creada, "$.urlFoto")))
+                .andExpect(jsonPath("$.fechaActualizacion", not((String) JsonPath.read(creada, "$.fechaActualizacion"))));
     }
 
     @Test
-    @DisplayName("HU-7: agregar una foto valida el archivo")
+    @DisplayName("HU-7 (ajuste): agregar una foto valida el archivo")
     void agregarFotoInvalida() throws Exception {
         String id = JsonPath.read(crearFicha(nombreCientificoUnico()), "$.id");
 
@@ -591,7 +592,7 @@ class TaxonControllerTest extends IntegrationTestBase {
     }
 
     @Test
-    @DisplayName("HU-7: una ficha admite como máximo 10 fotos")
+    @DisplayName("HU-7 (ajuste): una ficha admite como máximo 10 fotos")
     void agregarFotoSobreElMaximo() throws Exception {
         String id = JsonPath.read(crearFicha(nombreCientificoUnico()), "$.id");
         for (int i = 1; i < 10; i++) {
@@ -603,7 +604,7 @@ class TaxonControllerTest extends IntegrationTestBase {
     }
 
     @Test
-    @DisplayName("HU-7: al eliminar la foto principal la siguiente pasa a serlo y la eliminada se borra del almacenamiento")
+    @DisplayName("HU-7 (ajuste): al eliminar la foto principal la siguiente pasa a serlo y la eliminada se borra del almacenamiento")
     void eliminarFotoPrincipal() throws Exception {
         String id = JsonPath.read(crearFicha(nombreCientificoUnico()), "$.id");
         String conDos = agregarFoto(tokenAdministrador, id, fotoParaAgregar())
@@ -616,12 +617,13 @@ class TaxonControllerTest extends IntegrationTestBase {
 
         mockMvc.perform(get(RUTA_FICHAS + "/" + id))
                 .andExpect(jsonPath("$.fotos.length()").value(1))
-                .andExpect(jsonPath("$.urlFoto").value(urlSegunda));
+                .andExpect(jsonPath("$.urlFoto").value(urlSegunda))
+                .andExpect(jsonPath("$.fechaActualizacion", not((String) JsonPath.read(conDos, "$.fechaActualizacion"))));
         assertThat(estadoHttp(urlPrincipal)).isEqualTo(404);
     }
 
     @Test
-    @DisplayName("HU-7: la ficha conserva siempre al menos una foto")
+    @DisplayName("HU-7 (ajuste): la ficha conserva siempre al menos una foto")
     void eliminarUnicaFoto() throws Exception {
         String creada = crearFicha(nombreCientificoUnico());
         String id = JsonPath.read(creada, "$.id");
@@ -633,7 +635,7 @@ class TaxonControllerTest extends IntegrationTestBase {
     }
 
     @Test
-    @DisplayName("HU-7: un usuario registrado no puede gestionar las fotos")
+    @DisplayName("HU-7 (ajuste): un usuario registrado no puede gestionar las fotos")
     void usuarioRegistradoNoGestionaFotos() throws Exception {
         String creada = crearFicha(nombreCientificoUnico());
         String id = JsonPath.read(creada, "$.id");

@@ -1,4 +1,4 @@
--- HU-7 (v2.0): una ficha admite varias fotos; la de menor posicion es la principal del listado.
+-- v2.0 (HU-7): una ficha admite varias fotos; la de menor posicion es la principal del listado.
 CREATE TABLE fotos_ficha (
     id             UUID                     PRIMARY KEY,
     ficha_id       UUID                     NOT NULL,
