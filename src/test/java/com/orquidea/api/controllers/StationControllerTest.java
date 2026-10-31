@@ -6,6 +6,7 @@ import com.orquidea.api.model.ConservationStatus;
 import com.orquidea.api.model.Role;
 import com.orquidea.api.model.Taxon;
 import com.orquidea.api.model.TaxonCategory;
+import com.orquidea.api.model.TaxonPhoto;
 import com.orquidea.api.repository.TaxonRepository;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
@@ -425,9 +426,12 @@ class StationControllerTest extends IntegrationTestBase {
                 .andReturn().getResponse().getContentAsString();
     }
 
-    /** Las fichas se crean directo en la base: aquí solo importa poder asociarlas. */
+    /**
+     * Las fichas se crean directo en la base: aquí solo importa poder asociarlas. Llevan una foto principal png y
+     * una segunda jpg, para comprobar que la estación muestra la principal.
+     */
     private Taxon crearFicha(String vernacularName) {
-        return taxonRepository.save(Taxon.builder()
+        Taxon ficha = Taxon.builder()
                 .categoria(TaxonCategory.AVE)
                 .order("Pelecaniformes")
                 .family("Ardeidae")
@@ -437,8 +441,10 @@ class StationControllerTest extends IntegrationTestBase {
                 .alimentacion("Peces")
                 .rolEnHumedal("Depredador")
                 .estadoConservacion(ConservationStatus.LC)
-                .fotoClave("fichas/" + UUID.randomUUID() + ".png")
-                .build());
+                .build();
+        ficha.getFotos().add(TaxonPhoto.builder().ficha(ficha).fotoClave("fichas/" + UUID.randomUUID() + ".png").posicion(0).build());
+        ficha.getFotos().add(TaxonPhoto.builder().ficha(ficha).fotoClave("fichas/" + UUID.randomUUID() + ".jpg").posicion(1).build());
+        return taxonRepository.save(ficha);
     }
 
     /** Formulario válido y mutable, para que cada prueba quite o cambie lo que necesite. */
