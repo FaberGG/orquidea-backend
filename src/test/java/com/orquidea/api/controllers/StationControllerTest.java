@@ -28,7 +28,9 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.util.Arrays;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -104,6 +106,20 @@ class StationControllerTest extends IntegrationTestBase {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[*].id", hasItem(id)));
         assertThat(estadoHttp(JsonPath.read(respuesta, "$.urlFoto"))).isEqualTo(200);
+    }
+
+    @Test
+    @DisplayName("HU-13: el listado sale ordenado por nombre")
+    void listadoOrdenadoPorNombre() throws Exception {
+        String sufijo = UUID.randomUUID().toString().substring(0, 8);
+        String zeta = JsonPath.read(crearEstacion(formulario("Zeta " + sufijo)), "$.id");
+        String alfa = JsonPath.read(crearEstacion(formulario("Alfa " + sufijo)), "$.id");
+
+        String listado = mockMvc.perform(get(RUTA_ESTACIONES))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        List<String> ids = JsonPath.read(listado, "$[*].id");
+        assertThat(ids.indexOf(alfa)).isNotNegative().isLessThan(ids.indexOf(zeta));
     }
 
     @Test
@@ -203,6 +219,16 @@ class StationControllerTest extends IntegrationTestBase {
     void nombreDemasiadoLargo() throws Exception {
         esperarError(crear(tokenAdministrador, formulario("a".repeat(151)), fotoPng()), 400,
                 "El nombre no puede superar 150 caracteres.");
+    }
+
+    @Test
+    @DisplayName("HU-13: la foto no puede superar 10 MB")
+    void imagenDemasiadoGrande() throws Exception {
+        byte[] grande = Arrays.copyOf(png, 10 * 1024 * 1024 + 1);
+        MockMultipartFile foto = new MockMultipartFile("foto", "grande.png", "image/png", grande);
+
+        esperarError(crear(tokenAdministrador, formulario("Con foto grande"), foto), 413,
+                "La imagen supera el tamaño máximo permitido de 10 MB.");
     }
 
     // HU-13: edición
@@ -317,6 +343,24 @@ class StationControllerTest extends IntegrationTestBase {
     @DisplayName("HU-13 escenario 5: eliminar una estación que no existe responde 404")
     void eliminarInexistente() throws Exception {
         esperarError(eliminar(tokenAdministrador, UUID.randomUUID().toString()), 404, MENSAJE_NO_EXISTE);
+    }
+
+    @Test
+    @DisplayName("HU-13: al borrar una ficha se borra su asociación y la estación sigue en el mapa")
+    void borrarFichaAsociada() throws Exception {
+        Taxon garza = crearFicha("Garza real");
+        Taxon azulejo = crearFicha("Azulejo");
+        Map<String, String> datos = formulario("Mirador");
+        datos.put("fichaIds", garza.getId() + "," + azulejo.getId());
+        String id = JsonPath.read(crearEstacion(datos), "$.id");
+
+        // No hay endpoint para borrar fichas; la regla la garantiza la base de datos (ON DELETE CASCADE)
+        taxonRepository.deleteById(garza.getId());
+
+        mockMvc.perform(get(RUTA_ESTACIONES + "/" + id))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.fichas.length()").value(1))
+                .andExpect(jsonPath("$.fichas[0].id").value(azulejo.getId().toString()));
     }
 
     // Permisos
