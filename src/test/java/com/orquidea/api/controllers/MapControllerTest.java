@@ -183,6 +183,12 @@ class MapControllerTest extends IntegrationTestBase {
                 .isInstanceOf(DataIntegrityViolationException.class);
         assertThatThrownBy(() -> insertarTramo("Sin coordenadas", 3, "{\"type\":\"LineString\"}"))
                 .isInstanceOf(DataIntegrityViolationException.class);
+        assertThatThrownBy(() -> insertarTramo("Sin tipo", 4, "{\"coordinates\":[[-76.61,2.46],[-76.60,2.47]]}"))
+            .isInstanceOf(DataIntegrityViolationException.class);
+        assertThatThrownBy(() -> insertarTramo("Vacío", 5, "{}"))
+            .isInstanceOf(DataIntegrityViolationException.class);
+        assertThatThrownBy(() -> insertarTramo("Coordenadas en texto", 6, "{\"type\":\"LineString\",\"coordinates\":\"abc\"}"))
+            .isInstanceOf(DataIntegrityViolationException.class);
     }
 
     @Test

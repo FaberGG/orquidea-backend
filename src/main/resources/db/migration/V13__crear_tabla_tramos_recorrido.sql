@@ -10,9 +10,12 @@ CREATE TABLE tramos_recorrido (
     fecha_actualizacion TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
     CONSTRAINT ux_tramos_recorrido_orden UNIQUE (orden),
     CONSTRAINT ck_tramos_recorrido_geometria CHECK (
-        jsonb_typeof(geometria) = 'object'
-        AND geometria ->> 'type' = 'LineString'
-        AND jsonb_typeof(geometria -> 'coordinates') = 'array'
-        AND jsonb_array_length(geometria -> 'coordinates') >= 2
-    )
+        CASE
+            WHEN jsonb_typeof(geometria) = 'object'
+                AND geometria ->> 'type' = 'LineString'
+            AND jsonb_typeof(geometria -> 'coordinates') = 'array'
+        THEN jsonb_array_length(geometria -> 'coordinates') >= 2
+        ELSE FALSE
+        END
+)
 );
