@@ -4,6 +4,7 @@ import com.orquidea.api.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.access.hierarchicalroles.RoleHierarchy;
 import org.springframework.security.access.hierarchicalroles.RoleHierarchyImpl;
@@ -54,6 +55,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/fichas-taxonomicas", "/api/fichas-taxonomicas/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/componentes", "/api/componentes/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/estaciones", "/api/estaciones/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/mapa").permitAll()
                         // Solo el foro (HU-20); la cola /pendientes sigue protegida
                         .requestMatchers(HttpMethod.GET, "/api/reportes-avistamiento").permitAll()
                         .requestMatchers(RUTAS_PUBLICAS).permitAll()
@@ -93,6 +95,9 @@ public class SecurityConfig {
         configuracion.setAllowedOriginPatterns(corsProperties.origenesPermitidos());
         configuracion.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         configuracion.setAllowedHeaders(List.of("*"));
+        // El navegador solo deja leer a un cliente de otro origen las cabeceras expuestas; el mapa
+        // versionado (HU-12, HE-08) necesita leer el ETag.
+        configuracion.setExposedHeaders(List.of(HttpHeaders.ETAG));
         UrlBasedCorsConfigurationSource fuente = new UrlBasedCorsConfigurationSource();
         fuente.registerCorsConfiguration("/**", configuracion);
         return fuente;
