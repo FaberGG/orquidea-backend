@@ -2,6 +2,7 @@ package com.orquidea.api.exception;
 
 import com.orquidea.api.config.StorageProperties;
 import com.orquidea.api.dto.ApiErrorResponse;
+import com.orquidea.api.dto.StationRequest;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -22,10 +23,13 @@ import org.springframework.web.method.annotation.MethodArgumentTypeMismatchExcep
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
 
 import java.time.Instant;
+import java.util.Set;
 
 @Slf4j
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+
+    private static final Set<String> CAMPOS_COORDENADAS = Set.of("decimalLatitude", "decimalLongitude");
 
     private final DataSize tamanoMaximoImagen;
 
@@ -41,7 +45,8 @@ public class GlobalExceptionHandler {
 
     /**
      * Prioriza los mensajes de las anotaciones (@NotBlank, @Size...) sobre los errores de conversión,
-     * que Spring genera en inglés; para estos se arma un mensaje propio con el nombre del campo.
+     * que Spring genera en inglés; para estos se arma un mensaje propio con el nombre del campo, salvo en las
+     * coordenadas, donde un valor no numérico es el mismo caso que uno fuera de rango (HU-13, CA3).
      */
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ApiErrorResponse> manejarValidacion(
@@ -52,7 +57,9 @@ public class GlobalExceptionHandler {
                 .map(FieldError::getDefaultMessage)
                 .findFirst()
                 .or(() -> errores.stream()
-                        .map(error -> "El valor del campo '" + error.getField() + "' no es válido.")
+                        .map(error -> CAMPOS_COORDENADAS.contains(error.getField())
+                                ? StationRequest.MENSAJE_COORDENADAS
+                                : "El valor del campo '" + error.getField() + "' no es válido.")
                         .findFirst())
                 .orElse("La solicitud contiene datos inválidos.");
         return construir(HttpStatus.BAD_REQUEST, mensaje, request);
