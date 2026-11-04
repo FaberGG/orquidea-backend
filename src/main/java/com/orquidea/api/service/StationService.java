@@ -170,8 +170,13 @@ public class StationService {
     private StationDto aDto(Station estacion) {
         List<StationTaxonDto> fichas = estacion.getFichas().stream()
                 .sorted(Comparator.comparing(Taxon::getVernacularName, ORDEN_ALFABETICO))
-                .map(ficha -> stationMapper.aFichaDto(ficha, storageService.urlPublica(ficha.getFotoClave())))
+                .map(ficha -> stationMapper.aFichaDto(ficha, urlFotoPrincipal(ficha)))
                 .toList();
         return stationMapper.aDto(estacion, storageService.urlPublica(estacion.getFotoClave()), fichas);
+    }
+
+    /** La primera foto de la ficha es la principal (HU-7, ajuste); una ficha siempre conserva al menos una. */
+    private String urlFotoPrincipal(Taxon ficha) {
+        return ficha.getFotos().isEmpty() ? null : storageService.urlPublica(ficha.getFotos().get(0).getFotoClave());
     }
 }

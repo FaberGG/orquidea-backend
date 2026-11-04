@@ -1,5 +1,6 @@
 package com.orquidea.api.model;
 
+import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -7,6 +8,8 @@ import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.OneToMany;
+import jakarta.persistence.OrderBy;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
@@ -18,6 +21,8 @@ import lombok.Setter;
 
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 
 /**
@@ -71,9 +76,11 @@ public class Taxon {
     @Column(name = "estado_conservacion", nullable = false, length = 2)
     private ConservationStatus estadoConservacion;
 
-    /** Clave del objeto en el almacenamiento (R2/S3); la URL pública se arma al leer. */
-    @Column(name = "foto_clave", nullable = false, length = 300)
-    private String fotoClave;
+    /** En orden de carga; la primera es la foto principal del listado. Siempre hay al menos una. */
+    @Builder.Default
+    @OneToMany(mappedBy = "ficha", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OrderBy("posicion ASC")
+    private List<TaxonPhoto> fotos = new ArrayList<>();
 
     @Column(name = "fecha_creacion", nullable = false, updatable = false)
     private Instant fechaCreacion;

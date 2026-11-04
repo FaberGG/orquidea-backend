@@ -1,5 +1,6 @@
 package com.orquidea.api.controllers;
 
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.hamcrest.Matchers.hasItem;
 import static org.hamcrest.Matchers.instanceOf;
 import static org.hamcrest.Matchers.not;
@@ -35,7 +36,10 @@ class AnnouncementControllerTest extends IntegrationTestBase {
     @Autowired
     private JdbcTemplate jdbc;
 
-    /** Todas las pruebas comparten la misma BD: los títulos únicos evitan depender de lo que haya en ella. */
+    /**
+     * Todas las pruebas comparten la misma BD: los títulos únicos evitan depender
+     * de lo que haya en ella.
+     */
     private static String tituloUnico() {
         return "Anuncio " + UUID.randomUUID();
     }
@@ -53,9 +57,13 @@ class AnnouncementControllerTest extends IntegrationTestBase {
         return publicar(token, cuerpo(titulo, descripcion, "MEDIA", null));
     }
 
-    /** Arma el JSON del request; prioridad y fecha son opcionales para poder probar su ausencia. */
+    /**
+     * Arma el JSON del request; prioridad y fecha son opcionales para poder probar
+     * su ausencia.
+     */
     private static String cuerpo(String titulo, String descripcion, String prioridad, Instant fechaExpiracion) {
-        StringBuilder json = new StringBuilder("{\"titulo\":\"" + titulo + "\",\"descripcion\":\"" + descripcion + "\"");
+        StringBuilder json = new StringBuilder(
+                "{\"titulo\":\"" + titulo + "\",\"descripcion\":\"" + descripcion + "\"");
         if (prioridad != null) {
             json.append(",\"prioridad\":\"").append(prioridad).append("\"");
         }
@@ -65,7 +73,10 @@ class AnnouncementControllerTest extends IntegrationTestBase {
         return json.append("}").toString();
     }
 
-    /** Simula que la fecha de expiración ya pasó (el request no permite crear anuncios ya vencidos). */
+    /**
+     * Simula que la fecha de expiración ya pasó (el request no permite crear
+     * anuncios ya vencidos).
+     */
     private void vencer(String titulo) {
         jdbc.update("UPDATE anuncios SET fecha_expiracion = now() - interval '1 hour' WHERE titulo = ?", titulo);
     }
@@ -73,6 +84,21 @@ class AnnouncementControllerTest extends IntegrationTestBase {
     /** Simula que un administrador bajó el anuncio antes de su fecha final. */
     private void desactivar(String titulo) {
         jdbc.update("UPDATE anuncios SET estado = 'INACTIVO' WHERE titulo = ?", titulo);
+    }
+
+    private ResultActions enviarPatch(String token, String ruta, String cuerpoJson) throws Exception {
+        var peticion = patch(ruta);
+        if (cuerpoJson != null) {
+            peticion.contentType(MediaType.APPLICATION_JSON).content(cuerpoJson);
+        }
+        if (token != null) {
+            peticion.header(HttpHeaders.AUTHORIZATION, "Bearer " + token);
+        }
+        return mockMvc.perform(peticion);
+    }
+
+    private String idDe(ResultActions resultado) throws Exception {
+        return JsonPath.read(resultado.andReturn().getResponse().getContentAsString(), "$.id");
     }
 
     // ---------- HU-16: publicar ----------
@@ -84,15 +110,15 @@ class AnnouncementControllerTest extends IntegrationTestBase {
         String titulo = tituloUnico();
 
         publicar(token, cuerpo(titulo, "Contenido del anuncio", "ALTA", null))
-            .andExpect(status().isCreated())
-            .andExpect(jsonPath("$.id").value(notNullValue()))
-            .andExpect(jsonPath("$.titulo").value(titulo))
-            .andExpect(jsonPath("$.descripcion").value("Contenido del anuncio"))
-            .andExpect(jsonPath("$.fechaCreacion").value(notNullValue()))
-            .andExpect(jsonPath("$.prioridad").value("ALTA"))
-            .andExpect(jsonPath("$.estado").value("ACTIVO"))
-            .andExpect(jsonPath("$.fechaExpiracion").value(nullValue()))
-            .andExpect(jsonPath("$.expirado").value(false));
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.id").value(notNullValue()))
+                .andExpect(jsonPath("$.titulo").value(titulo))
+                .andExpect(jsonPath("$.descripcion").value("Contenido del anuncio"))
+                .andExpect(jsonPath("$.fechaCreacion").value(notNullValue()))
+                .andExpect(jsonPath("$.prioridad").value("ALTA"))
+                .andExpect(jsonPath("$.estado").value("ACTIVO"))
+                .andExpect(jsonPath("$.fechaExpiracion").value(nullValue()))
+                .andExpect(jsonPath("$.expirado").value(false));
     }
 
     @Test
@@ -101,7 +127,7 @@ class AnnouncementControllerTest extends IntegrationTestBase {
         String token = obtenerToken(CORREO_SUPERADMIN, CONTRASENA_SUPERADMIN);
 
         publicar(token, tituloUnico(), "Publicado por el superadministrador")
-            .andExpect(status().isCreated());
+                .andExpect(status().isCreated());
     }
 
     @Test
@@ -114,10 +140,10 @@ class AnnouncementControllerTest extends IntegrationTestBase {
                 {"id":"%s","titulo":"%s","descripcion":"Contenido","prioridad":"MEDIA",
                  "estado":"INACTIVO","fechaCreacion":"2000-01-01T00:00:00Z"}
                 """.formatted(idImpuesto, tituloUnico()))
-            .andExpect(status().isCreated())
-            .andExpect(jsonPath("$.id").value(not(idImpuesto.toString())))
-            .andExpect(jsonPath("$.fechaCreacion").value(not("2000-01-01T00:00:00Z")))
-            .andExpect(jsonPath("$.estado").value("ACTIVO"));
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.id").value(not(idImpuesto.toString())))
+                .andExpect(jsonPath("$.fechaCreacion").value(not("2000-01-01T00:00:00Z")))
+                .andExpect(jsonPath("$.estado").value("ACTIVO"));
     }
 
     @Test
@@ -126,8 +152,8 @@ class AnnouncementControllerTest extends IntegrationTestBase {
         String token = tokenDeUsuarioNuevo(Role.ADMINISTRADOR);
 
         publicar(token, "{\"descripcion\":\"Solo contenido\",\"prioridad\":\"MEDIA\"}")
-            .andExpect(status().isBadRequest())
-            .andExpect(jsonPath("$.mensaje").value("Debes completar el título del anuncio."));
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.mensaje").value("Debes completar el título del anuncio."));
     }
 
     @Test
@@ -136,8 +162,8 @@ class AnnouncementControllerTest extends IntegrationTestBase {
         String token = tokenDeUsuarioNuevo(Role.ADMINISTRADOR);
 
         publicar(token, "   ", "Contenido")
-            .andExpect(status().isBadRequest())
-            .andExpect(jsonPath("$.mensaje").value("Debes completar el título del anuncio."));
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.mensaje").value("Debes completar el título del anuncio."));
     }
 
     @Test
@@ -146,8 +172,8 @@ class AnnouncementControllerTest extends IntegrationTestBase {
         String token = tokenDeUsuarioNuevo(Role.ADMINISTRADOR);
 
         publicar(token, "{\"titulo\":\"Solo título\",\"prioridad\":\"MEDIA\"}")
-            .andExpect(status().isBadRequest())
-            .andExpect(jsonPath("$.mensaje").value("Debes completar el contenido del anuncio."));
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.mensaje").value("Debes completar el contenido del anuncio."));
     }
 
     @Test
@@ -156,8 +182,8 @@ class AnnouncementControllerTest extends IntegrationTestBase {
         String token = tokenDeUsuarioNuevo(Role.ADMINISTRADOR);
 
         publicar(token, "T".repeat(151), "Contenido")
-            .andExpect(status().isBadRequest())
-            .andExpect(jsonPath("$.mensaje").value("El título no puede superar 150 caracteres."));
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.mensaje").value("El título no puede superar 150 caracteres."));
     }
 
     @Test
@@ -166,8 +192,8 @@ class AnnouncementControllerTest extends IntegrationTestBase {
         String token = tokenDeUsuarioNuevo(Role.ADMINISTRADOR);
 
         publicar(token, tituloUnico(), "C".repeat(1001))
-            .andExpect(status().isBadRequest())
-            .andExpect(jsonPath("$.mensaje").value("El contenido no puede superar 1000 caracteres."));
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.mensaje").value("El contenido no puede superar 1000 caracteres."));
     }
 
     @Test
@@ -176,8 +202,8 @@ class AnnouncementControllerTest extends IntegrationTestBase {
         String token = tokenDeUsuarioNuevo(Role.ADMINISTRADOR);
 
         publicar(token, cuerpo(tituloUnico(), "Contenido", null, null))
-            .andExpect(status().isBadRequest())
-            .andExpect(jsonPath("$.mensaje").value("Debes seleccionar la prioridad del anuncio."));
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.mensaje").value("Debes seleccionar la prioridad del anuncio."));
     }
 
     @Test
@@ -186,7 +212,7 @@ class AnnouncementControllerTest extends IntegrationTestBase {
         String token = tokenDeUsuarioNuevo(Role.ADMINISTRADOR);
 
         publicar(token, cuerpo(tituloUnico(), "Contenido", "URGENTE", null))
-            .andExpect(status().isBadRequest());
+                .andExpect(status().isBadRequest());
     }
 
     @Test
@@ -195,7 +221,7 @@ class AnnouncementControllerTest extends IntegrationTestBase {
         String token = tokenDeUsuarioNuevo(Role.ADMINISTRADOR);
 
         publicar(token, cuerpo(tituloUnico(), "Contenido", "MEDIA", Instant.now().minus(2, ChronoUnit.DAYS)))
-            .andExpect(status().isBadRequest());
+                .andExpect(status().isBadRequest());
     }
 
     @Test
@@ -204,10 +230,10 @@ class AnnouncementControllerTest extends IntegrationTestBase {
         String token = tokenDeUsuarioNuevo(Role.ADMINISTRADOR);
 
         publicar(token, cuerpo(tituloUnico(), "Contenido", "BAJA", Instant.now().plus(7, ChronoUnit.DAYS)))
-            .andExpect(status().isCreated())
-            .andExpect(jsonPath("$.fechaExpiracion").value(notNullValue()))
-            .andExpect(jsonPath("$.prioridad").value("BAJA"))
-            .andExpect(jsonPath("$.expirado").value(false));
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.fechaExpiracion").value(notNullValue()))
+                .andExpect(jsonPath("$.prioridad").value("BAJA"))
+                .andExpect(jsonPath("$.expirado").value(false));
     }
 
     @Test
@@ -216,16 +242,16 @@ class AnnouncementControllerTest extends IntegrationTestBase {
         String token = tokenDeUsuarioNuevo(Role.USUARIO_REGISTRADO);
 
         publicar(token, tituloUnico(), "Contenido")
-            .andExpect(status().isForbidden())
-            .andExpect(jsonPath("$.mensaje").value("No tiene permisos para realizar esta acción."));
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.mensaje").value("No tiene permisos para realizar esta acción."));
     }
 
     @Test
     @DisplayName("Sin sesión no se pueden publicar anuncios")
     void sinSesionNoPuedePublicar() throws Exception {
         publicar(null, tituloUnico(), "Contenido")
-            .andExpect(status().isUnauthorized())
-            .andExpect(jsonPath("$.mensaje").value("Debe iniciar sesión para acceder a este recurso."));
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.mensaje").value("Debe iniciar sesión para acceder a este recurso."));
     }
 
     // ---------- HU-17: consultar (público) ----------
@@ -238,9 +264,9 @@ class AnnouncementControllerTest extends IntegrationTestBase {
         publicar(token, titulo, "Visible para todos").andExpect(status().isCreated());
 
         mockMvc.perform(get(RUTA_ANUNCIOS))
-            .andExpect(status().isOk())
-            .andExpect(jsonPath("$").value(instanceOf(List.class)))
-            .andExpect(jsonPath("$[*].titulo", hasItem(titulo)));
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$").value(instanceOf(List.class)))
+                .andExpect(jsonPath("$[*].titulo", hasItem(titulo)));
     }
 
     @Test
@@ -254,14 +280,14 @@ class AnnouncementControllerTest extends IntegrationTestBase {
         publicar(token, segundo, "Publicado después").andExpect(status().isCreated());
 
         String respuesta = mockMvc.perform(get(RUTA_ANUNCIOS))
-            .andExpect(status().isOk())
-            .andReturn().getResponse().getContentAsString();
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
         List<String> titulos = JsonPath.read(respuesta, "$[*].titulo");
 
         org.assertj.core.api.Assertions.assertThat(titulos).contains(primero, segundo);
         org.assertj.core.api.Assertions.assertThat(titulos.indexOf(segundo))
-            .as("el anuncio más reciente debe aparecer antes")
-            .isLessThan(titulos.indexOf(primero));
+                .as("el anuncio más reciente debe aparecer antes")
+                .isLessThan(titulos.indexOf(primero));
     }
 
     @Test
@@ -270,12 +296,12 @@ class AnnouncementControllerTest extends IntegrationTestBase {
         String token = tokenDeUsuarioNuevo(Role.ADMINISTRADOR);
         String titulo = tituloUnico();
         publicar(token, cuerpo(titulo, "Se vence pronto", "MEDIA", Instant.now().plus(7, ChronoUnit.DAYS)))
-            .andExpect(status().isCreated());
+                .andExpect(status().isCreated());
         vencer(titulo);
 
         mockMvc.perform(get(RUTA_ANUNCIOS))
-            .andExpect(status().isOk())
-            .andExpect(jsonPath("$[*].titulo", not(hasItem(titulo))));
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[*].titulo", not(hasItem(titulo))));
     }
 
     @Test
@@ -287,8 +313,8 @@ class AnnouncementControllerTest extends IntegrationTestBase {
         desactivar(titulo);
 
         mockMvc.perform(get(RUTA_ANUNCIOS))
-            .andExpect(status().isOk())
-            .andExpect(jsonPath("$[*].titulo", not(hasItem(titulo))));
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[*].titulo", not(hasItem(titulo))));
     }
 
     // ---------- Listado de administración ----------
@@ -299,12 +325,12 @@ class AnnouncementControllerTest extends IntegrationTestBase {
         String token = tokenDeUsuarioNuevo(Role.ADMINISTRADOR);
         String titulo = tituloUnico();
         publicar(token, cuerpo(titulo, "Se vence pronto", "MEDIA", Instant.now().plus(7, ChronoUnit.DAYS)))
-            .andExpect(status().isCreated());
+                .andExpect(status().isCreated());
         vencer(titulo);
 
         mockMvc.perform(get(RUTA_ADMINISTRACION).header(HttpHeaders.AUTHORIZATION, "Bearer " + token))
-            .andExpect(status().isOk())
-            .andExpect(jsonPath("$[?(@.titulo=='" + titulo + "')].expirado", hasItem(true)));
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[?(@.titulo=='" + titulo + "')].expirado", hasItem(true)));
     }
 
     @Test
@@ -316,8 +342,8 @@ class AnnouncementControllerTest extends IntegrationTestBase {
         desactivar(titulo);
 
         mockMvc.perform(get(RUTA_ADMINISTRACION).header(HttpHeaders.AUTHORIZATION, "Bearer " + token))
-            .andExpect(status().isOk())
-            .andExpect(jsonPath("$[?(@.titulo=='" + titulo + "')].estado", hasItem("INACTIVO")));
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[?(@.titulo=='" + titulo + "')].estado", hasItem("INACTIVO")));
     }
 
     @Test
@@ -326,13 +352,86 @@ class AnnouncementControllerTest extends IntegrationTestBase {
         String token = tokenDeUsuarioNuevo(Role.USUARIO_REGISTRADO);
 
         mockMvc.perform(get(RUTA_ADMINISTRACION).header(HttpHeaders.AUTHORIZATION, "Bearer " + token))
-            .andExpect(status().isForbidden());
+                .andExpect(status().isForbidden());
     }
 
     @Test
     @DisplayName("Sin sesión no se puede ver el listado de administración")
     void sinSesionNoVeListadoAdministracion() throws Exception {
         mockMvc.perform(get(RUTA_ADMINISTRACION))
-            .andExpect(status().isUnauthorized());
+                .andExpect(status().isUnauthorized());
     }
+
+    @Test
+    @DisplayName("Actualizar solo el título conserva los demás campos")
+    void actualizarSoloTituloConservaLosDemas() throws Exception {
+        String token = tokenDeUsuarioNuevo(Role.ADMINISTRADOR);
+        String id = idDe(publicar(token, cuerpo(tituloUnico(), "Contenido original", "ALTA", null))
+                .andExpect(status().isCreated()));
+        String nuevoTitulo = tituloUnico();
+
+        enviarPatch(token, RUTA_ANUNCIOS + "/" + id + "/actualizar", "{\"titulo\":\"" + nuevoTitulo + "\"}")
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.titulo").value(nuevoTitulo))
+                .andExpect(jsonPath("$.descripcion").value("Contenido original"))
+                .andExpect(jsonPath("$.prioridad").value("ALTA"))
+                .andExpect(jsonPath("$.estado").value("ACTIVO"));
+    }
+
+    @Test
+    @DisplayName("Actualizar prioridad y fecha de expiración cambia solo esos campos")
+    void actualizarPrioridadYFecha() throws Exception {
+        String token = tokenDeUsuarioNuevo(Role.ADMINISTRADOR);
+        String titulo = tituloUnico();
+        String id = idDe(publicar(token, cuerpo(titulo, "Contenido", "BAJA", null)).andExpect(status().isCreated()));
+
+        enviarPatch(token, RUTA_ANUNCIOS + "/" + id + "/actualizar",
+                "{\"prioridad\":\"ALTA\",\"fechaExpiracion\":\"" + Instant.now().plus(5, ChronoUnit.DAYS) + "\"}")
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.titulo").value(titulo))
+                .andExpect(jsonPath("$.prioridad").value("ALTA"))
+                .andExpect(jsonPath("$.fechaExpiracion").value(notNullValue()));
+    }
+
+    @Test
+    @DisplayName("Actualizar con un título en blanco se rechaza")
+    void actualizarConTituloEnBlancoSeRechaza() throws Exception {
+        String token = tokenDeUsuarioNuevo(Role.ADMINISTRADOR);
+        String id = idDe(publicar(token, tituloUnico(), "Contenido").andExpect(status().isCreated()));
+
+        enviarPatch(token, RUTA_ANUNCIOS + "/" + id + "/actualizar", "{\"titulo\":\"   \"}")
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @DisplayName("Actualizar con una fecha de expiración pasada se rechaza")
+    void actualizarConFechaPasadaSeRechaza() throws Exception {
+        String token = tokenDeUsuarioNuevo(Role.ADMINISTRADOR);
+        String id = idDe(publicar(token, tituloUnico(), "Contenido").andExpect(status().isCreated()));
+
+        enviarPatch(token, RUTA_ANUNCIOS + "/" + id + "/actualizar",
+                "{\"fechaExpiracion\":\"" + Instant.now().minus(2, ChronoUnit.DAYS) + "\"}")
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @DisplayName("Actualizar un anuncio que no existe devuelve 404")
+    void actualizarAnuncioInexistente() throws Exception {
+        String token = tokenDeUsuarioNuevo(Role.ADMINISTRADOR);
+
+        enviarPatch(token, RUTA_ANUNCIOS + "/" + UUID.randomUUID() + "/actualizar", "{\"titulo\":\"Nuevo\"}")
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    @DisplayName("Un usuario registrado no puede actualizar anuncios")
+    void usuarioRegistradoNoPuedeActualizar() throws Exception {
+        String admin = tokenDeUsuarioNuevo(Role.ADMINISTRADOR);
+        String id = idDe(publicar(admin, tituloUnico(), "Contenido").andExpect(status().isCreated()));
+        String usuario = tokenDeUsuarioNuevo(Role.USUARIO_REGISTRADO);
+
+        enviarPatch(usuario, RUTA_ANUNCIOS + "/" + id + "/actualizar", "{\"titulo\":\"Intento\"}")
+                .andExpect(status().isForbidden());
+    }
+
 }
