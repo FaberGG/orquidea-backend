@@ -42,9 +42,10 @@ public class OccurrenceController {
     private final OccurrenceService occurrenceService;
 
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    @PreAuthorize("hasRole('USUARIO_REGISTRADO')")
+    @PreAuthorize("hasAnyRole('USUARIO_REGISTRADO', 'ADMINISTRADOR')")
     @Operation(summary = "Crear reporte de avistamiento",
-            description = "Solo USUARIO_REGISTRADO. Formulario multipart: la descripción es obligatoria; reino y "
+            description = "USUARIO_REGISTRADO, ADMINISTRADOR o SUPERADMINISTRADOR. El reporte de un administrador "
+                    + "también queda PENDIENTE y pasa por la revisión. Formulario multipart: la descripción es obligatoria; reino y "
                     + "clasificación sin valor quedan como desconocidos; la foto es opcional (jpg o png, máx. 10 MB). "
                     + "El autor es el usuario autenticado. Ante un 201 el cliente muestra: "
                     + "'Tu reporte fue enviado y será revisado por un administrador.'")
@@ -53,8 +54,6 @@ public class OccurrenceController {
     @ApiResponse(responseCode = "400", description = "La descripción es obligatoria. / El formato de la imagen no es válido.",
             content = @Content(schema = @Schema(implementation = ApiErrorResponse.class)))
     @ApiResponse(responseCode = "401", description = "Sin sesión iniciada",
-            content = @Content(schema = @Schema(implementation = ApiErrorResponse.class)))
-    @ApiResponse(responseCode = "403", description = "El usuario no es USUARIO_REGISTRADO",
             content = @Content(schema = @Schema(implementation = ApiErrorResponse.class)))
     @ApiResponse(responseCode = "409", description = "Otro usuario ya registró un reporte con ese id",
             content = @Content(schema = @Schema(implementation = ApiErrorResponse.class)))
