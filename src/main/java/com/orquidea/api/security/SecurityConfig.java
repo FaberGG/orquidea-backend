@@ -53,6 +53,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/fichas-taxonomicas/*/qr").authenticated()
                         .requestMatchers(HttpMethod.GET, "/api/fichas-taxonomicas", "/api/fichas-taxonomicas/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/componentes", "/api/componentes/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/estaciones", "/api/estaciones/**").permitAll()
                         // Solo el foro (HU-20); la cola /pendientes sigue protegida
                         .requestMatchers(HttpMethod.GET, "/api/reportes-avistamiento").permitAll()
                         .requestMatchers(RUTAS_PUBLICAS).permitAll()
