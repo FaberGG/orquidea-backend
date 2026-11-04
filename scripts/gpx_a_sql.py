@@ -6,7 +6,7 @@ se simplifica con Douglas-Peucker y se escribe como INSERT en tramos_recorrido.
 
 Uso:
     python3 scripts/gpx_a_sql.py recorrido.gpx --nombre "Sendero principal" \\
-        > src/main/resources/db/migration/V14__cargar_trazado_recorrido.sql
+        > src/main/resources/db/migration/V16__cargar_trazado_recorrido.sql
 
 Para sumar más tramos después (p. ej. el recorrido entre humedales) se genera otra migración con
 --orden-inicial mayor que el último orden ya cargado. Los ids son deterministas (uuid5 sobre nombre y orden),
