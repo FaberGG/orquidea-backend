@@ -110,17 +110,18 @@ class StationControllerTest extends IntegrationTestBase {
     }
 
     @Test
-    @DisplayName("HU-13: el listado sale ordenado por nombre")
+    @DisplayName("HU-13: el listado sale en orden alfabético por nombre, sin importar mayúsculas ni tildes")
     void listadoOrdenadoPorNombre() throws Exception {
         String sufijo = UUID.randomUUID().toString().substring(0, 8);
         String zeta = JsonPath.read(crearEstacion(formulario("Zeta " + sufijo)), "$.id");
+        String arbol = JsonPath.read(crearEstacion(formulario("árbol " + sufijo)), "$.id");
         String alfa = JsonPath.read(crearEstacion(formulario("Alfa " + sufijo)), "$.id");
 
         String listado = mockMvc.perform(get(RUTA_ESTACIONES))
                 .andExpect(status().isOk())
                 .andReturn().getResponse().getContentAsString();
         List<String> ids = JsonPath.read(listado, "$[*].id");
-        assertThat(ids.indexOf(alfa)).isNotNegative().isLessThan(ids.indexOf(zeta));
+        assertThat(ids).containsSubsequence(alfa, arbol, zeta);
     }
 
     @Test

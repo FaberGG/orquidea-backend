@@ -14,7 +14,6 @@ import com.orquidea.api.storage.ImageValidator;
 import com.orquidea.api.storage.ImageValidator.ValidatedImage;
 import com.orquidea.api.storage.StorageService;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
@@ -23,10 +22,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
-import java.text.Collator;
-import java.util.Comparator;
 import java.util.List;
-import java.util.Locale;
 import java.util.UUID;
 
 /**
@@ -43,8 +39,6 @@ public class StationService {
     private static final String MENSAJE_FICHA_NO_EXISTE = "Alguna de las fichas asociadas no existe.";
     /** Decimales que guarda la base de datos (NUMERIC(9, 6)), unos 10 cm de precisión. */
     private static final int DECIMALES_COORDENADAS = 6;
-    /** Alfabético en español: sin distinguir mayúsculas ni tildes ("Águila" antes que "Azulejo"). */
-    private static final Collator ORDEN_ALFABETICO = Collator.getInstance(Locale.forLanguageTag("es"));
 
     private final StationRepository stationRepository;
     private final TaxonRepository taxonRepository;
@@ -54,7 +48,8 @@ public class StationService {
 
     /** Ordenadas por nombre y sin paginar: el mapa las muestra todas. */
     public List<StationDto> listar() {
-        return stationRepository.findAll(Sort.by("nombre")).stream()
+        return stationRepository.findAll().stream()
+                .sorted(AlphabeticalOrder.por(Station::getNombre))
                 .map(this::aDto)
                 .toList();
     }
@@ -169,7 +164,7 @@ public class StationService {
     /** Las fichas van por nombre común; se ordenan aquí para que la respuesta al guardar coincida con la consulta. */
     private StationDto aDto(Station estacion) {
         List<StationTaxonDto> fichas = estacion.getFichas().stream()
-                .sorted(Comparator.comparing(Taxon::getVernacularName, ORDEN_ALFABETICO))
+                .sorted(AlphabeticalOrder.por(Taxon::getVernacularName))
                 .map(ficha -> stationMapper.aFichaDto(ficha, urlFotoPrincipal(ficha)))
                 .toList();
         return stationMapper.aDto(estacion, storageService.urlPublica(estacion.getFotoClave()), fichas);

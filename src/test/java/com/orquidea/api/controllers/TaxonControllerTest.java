@@ -32,6 +32,7 @@ import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -433,6 +434,20 @@ class TaxonControllerTest extends IntegrationTestBase {
     }
 
     @Test
+    @DisplayName("HU-10: el listado sale en orden alfabético por nombre común, sin importar mayúsculas ni tildes")
+    void listadoEnOrdenAlfabetico() throws Exception {
+        String zorzal = crearConNombreComun("Zorzal");
+        String aguila = crearConNombreComun("águila");
+        String buho = crearConNombreComun("Búho");
+
+        String listado = mockMvc.perform(get(RUTA_FICHAS))
+            .andExpect(status().isOk())
+            .andReturn().getResponse().getContentAsString();
+        List<String> ids = JsonPath.read(listado, "$[*].id");
+        assertThat(ids).containsSubsequence(aguila, buho, zorzal);
+    }
+
+    @Test
     @DisplayName("HU-10: una categoría que no existe responde 400")
     void listarConCategoriaInvalida() throws Exception {
         esperarError(mockMvc.perform(get(RUTA_FICHAS).param("categoria", "PEZ")), 400,
@@ -700,6 +715,15 @@ class TaxonControllerTest extends IntegrationTestBase {
         return crear(tokenAdministrador, formulario(scientificName), fotoPng())
                 .andExpect(status().isCreated())
                 .andReturn().getResponse().getContentAsString();
+    }
+
+    private String crearConNombreComun(String vernacularName) throws Exception {
+        Map<String, String> datos = formulario(nombreCientificoUnico());
+        datos.put("vernacularName", vernacularName);
+        String respuesta = crear(tokenAdministrador, datos, fotoPng())
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+        return JsonPath.read(respuesta, "$.id");
     }
 
     private static int estadoHttp(String url) throws Exception {

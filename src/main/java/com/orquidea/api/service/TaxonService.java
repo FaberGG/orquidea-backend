@@ -17,7 +17,6 @@ import com.orquidea.api.storage.StorageService;
 import com.orquidea.api.storage.ImageValidator;
 import com.orquidea.api.storage.ImageValidator.ValidatedImage;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
@@ -127,11 +126,11 @@ public class TaxonService {
 
     /** Listado completo sin filtros; el listado público por categoría es la HU-10. */
     public List<TaxonDto> listar(TaxonCategory categoria) {
-        Sort order = Sort.by("vernacularName");
         List<Taxon> fichas = categoria == null
-            ? taxonRepository.findAll(order)
-            : taxonRepository.findByCategoria(categoria, order);
+            ? taxonRepository.findAll()
+            : taxonRepository.findByCategoria(categoria);
         return fichas.stream()
+            .sorted(AlphabeticalOrder.por(Taxon::getVernacularName))
             .map(this::aDto)
             .toList();
     }
