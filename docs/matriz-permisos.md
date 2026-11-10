@@ -27,13 +27,14 @@ Leyenda: ✅ permitido · ❌ 401 sin sesión · ❌ 403 rol insuficiente
 | 3 | POST | `/api/autenticacion/recuperar-contrasena` | ✅ | ✅ | ✅ | ✅ | `SecurityConfig` (permitAll) |
 | 4 | POST | `/api/autenticacion/restablecer-contrasena` | ✅ | ✅ | ✅ | ✅ | `SecurityConfig` (permitAll) |
 | 5 | GET | `/api/autenticacion/yo` | ❌ 401 | ✅ | ✅ | ✅ | `anyRequest().authenticated()` |
-| 6 | GET | `/api/fichas-taxonomicas` (`?categoria=`) | ✅ | ✅ | ✅ | ✅ | `SecurityConfig` (permitAll) |
+| 6 | GET | `/api/fichas-taxonomicas` (`?categoria=&pagina=&tamano=`) | ✅ | ✅ | ✅ | ✅ | `SecurityConfig` (permitAll) |
 | 7 | GET | `/api/fichas-taxonomicas/{id}` | ✅ | ✅ | ✅ | ✅ | `SecurityConfig` (permitAll) |
 | 8 | POST | `/api/fichas-taxonomicas` (multipart) | ❌ 401 | ❌ 403 | ✅ | ✅ (por jerarquía) | `TaxonController` `@PreAuthorize("hasRole('ADMINISTRADOR')")` |
 | 9 | PUT | `/api/fichas-taxonomicas/{id}` (multipart) | ❌ 401 | ❌ 403 | ✅ | ✅ (por jerarquía) | `TaxonController` `@PreAuthorize("hasRole('ADMINISTRADOR')")` |
 | 10 | PUT | `/api/administradores/{id}` | ❌ 401 | ❌ 403 | ❌ 403 | ✅ | `AdministratorController` `@PreAuthorize("hasRole('SUPERADMINISTRADOR')")` (clase) |
 | 11 | POST | `/api/administradores/{id}/revocar-acceso` | ❌ 401 | ❌ 403 | ❌ 403 | ✅ | `AdministratorController` (clase) |
 | 12 | POST | `/api/administradores/registrarAdmin` | ❌ 401 | ❌ 403 | ❌ 403 | ✅ | `AdministratorController` (clase) |
+| 13 | GET | `/api/fichas-taxonomicas/sincronizacion` (`?modificadoDesde=`) | ✅ | ✅ | ✅ | ✅ | `SecurityConfig` (permitAll) |
 
 Rutas de infraestructura públicas para todos: `OPTIONS /**` (preflight CORS), `/v3/api-docs/**`, `/swagger-ui/**`, `/swagger-ui.html` y `/error`.
 

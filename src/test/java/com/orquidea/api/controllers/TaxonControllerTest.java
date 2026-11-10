@@ -16,8 +16,10 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.junit.jupiter.params.provider.EnumSource;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.web.servlet.ResultActions;
 import org.springframework.test.web.servlet.request.MockMultipartHttpServletRequestBuilder;
@@ -30,6 +32,10 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
+import java.sql.Timestamp;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -38,7 +44,7 @@ import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.endsWith;
-import static org.hamcrest.Matchers.hasItem;
+import static org.hamcrest.Matchers.greaterThan;
 import static org.hamcrest.Matchers.startsWith;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -51,12 +57,16 @@ import static org.hamcrest.Matchers.not;
 class TaxonControllerTest extends IntegrationTestBase {
 
     private static final String RUTA_FICHAS = "/api/fichas-taxonomicas";
+    private static final String RUTA_SINCRONIZACION = RUTA_FICHAS + "/sincronizacion";
     private static final String MENSAJE_OBLIGATORIOS = "Debes completar todos los campos obligatorios.";
     private static final String MENSAJE_FORMATO = "El formato de la imagen no es válido.";
     private static final String MENSAJE_SIN_FOTO = "Debes seleccionar una imagen.";
 
     private static byte[] png;
     private static byte[] jpeg;
+
+    @Autowired
+    private JdbcTemplate jdbcTemplate;
 
     private String tokenAdministrador;
 
@@ -103,9 +113,7 @@ class TaxonControllerTest extends IntegrationTestBase {
         mockMvc.perform(get(RUTA_FICHAS + "/" + id))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.scientificName").value(scientificName));
-        mockMvc.perform(get(RUTA_FICHAS))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$[*].scientificName", hasItem(scientificName)));
+        assertThat(listadoCompleto(null)).extracting(ficha -> ficha.get("scientificName")).contains(scientificName);
 
         // La foto quedó en el almacenamiento y se lee desde su URL pública
         String urlFoto = JsonPath.read(respuesta, "$.urlFoto");
@@ -402,49 +410,47 @@ class TaxonControllerTest extends IntegrationTestBase {
         datosPlanta.put("categoria", "PLANTA");
         crear(tokenAdministrador, datosPlanta, fotoPng()).andExpect(status().isCreated());
 
+        List<Map<String, Object>> aves = listadoCompleto("AVE");
+        assertThat(aves).extracting(ficha -> ficha.get("scientificName")).contains(ave).doesNotContain(planta);
+        assertThat(aves).extracting(ficha -> ficha.get("categoria")).containsOnly("AVE");
         mockMvc.perform(get(RUTA_FICHAS).param("categoria", "AVE"))
             .andExpect(status().isOk())
-            .andExpect(jsonPath("$[*].scientificName", hasItem(ave)))
-            .andExpect(jsonPath("$[*].scientificName", not(hasItem(planta))))
-            .andExpect(jsonPath("$[?(@.categoria != 'AVE')]").isEmpty())
-            .andExpect(jsonPath("$[0].vernacularName").isNotEmpty())
-            .andExpect(jsonPath("$[0].urlFoto").isNotEmpty());
+            .andExpect(jsonPath("$.contenido[0].vernacularName").isNotEmpty())
+            .andExpect(jsonPath("$.contenido[0].urlFoto").isNotEmpty());
     }
 
     @Test
-    @DisplayName("HU-10 escenario 2: una categoría sin fichas devuelve una lista vacía")
+    @DisplayName("HU-10 escenario 2: una categoría sin fichas devuelve una página vacía")
     void listarCategoriaSinFichas() throws Exception {
         crearFicha(nombreCientificoUnico()); // solo hay aves en estas pruebas
 
         mockMvc.perform(get(RUTA_FICHAS).param("categoria", "INSECTO"))
             .andExpect(status().isOk())
-            .andExpect(jsonPath("$").isArray())
-            .andExpect(jsonPath("$[?(@.categoria != 'INSECTO')]").isEmpty());
+            .andExpect(jsonPath("$.contenido").isArray())
+            .andExpect(jsonPath("$.contenido[?(@.categoria != 'INSECTO')]").isEmpty());
     }
-    
+
     @Test
     @DisplayName("HU-10: sin categoría se listan todas las fichas")
     void listarSinFiltro() throws Exception {
         String scientificName = nombreCientificoUnico();
         crearFicha(scientificName);
 
-        mockMvc.perform(get(RUTA_FICHAS))
-            .andExpect(status().isOk())
-            .andExpect(jsonPath("$[*].scientificName", hasItem(scientificName)));
+        assertThat(listadoCompleto(null)).extracting(ficha -> ficha.get("scientificName")).contains(scientificName);
     }
 
     @Test
-    @DisplayName("HU-10: el listado sale en orden alfabético por nombre común, sin importar mayúsculas ni tildes")
+    @DisplayName("HU-10 y HU-21: el listado sigue el orden alfabético español en todas las páginas: sin importar "
+            + "mayúsculas ni tildes, y la ñ después de la n")
     void listadoEnOrdenAlfabetico() throws Exception {
         String zorzal = crearConNombreComun("Zorzal");
+        String nandu = crearConNombreComun("Ñandú");
         String aguila = crearConNombreComun("águila");
+        String nutria = crearConNombreComun("nutria");
         String buho = crearConNombreComun("Búho");
 
-        String listado = mockMvc.perform(get(RUTA_FICHAS))
-            .andExpect(status().isOk())
-            .andReturn().getResponse().getContentAsString();
-        List<String> ids = JsonPath.read(listado, "$[*].id");
-        assertThat(ids).containsSubsequence(aguila, buho, zorzal);
+        assertThat(listadoCompleto(null)).extracting(ficha -> ficha.get("id"))
+            .containsSubsequence(aguila, buho, nutria, nandu, zorzal);
     }
 
     @Test
@@ -466,10 +472,9 @@ class TaxonControllerTest extends IntegrationTestBase {
             .andExpect(status().isCreated())
             .andExpect(jsonPath("$.categoria").value(categoria.name()));
 
-        mockMvc.perform(get(RUTA_FICHAS).param("categoria", categoria.name()))
-            .andExpect(status().isOk())
-            .andExpect(jsonPath("$[*].scientificName", hasItem(scientificName)))
-            .andExpect(jsonPath("$[?(@.categoria != '" + categoria.name() + "')]").isEmpty());
+        List<Map<String, Object>> fichas = listadoCompleto(categoria.name());
+        assertThat(fichas).extracting(ficha -> ficha.get("scientificName")).contains(scientificName);
+        assertThat(fichas).extracting(ficha -> ficha.get("categoria")).containsOnly(categoria.name());
     }
 
     @Test
@@ -672,7 +677,226 @@ class TaxonControllerTest extends IntegrationTestBase {
         eliminarFoto(token, id, JsonPath.read(creada, "$.fotos[0].id")).andExpect(status().isForbidden());
     }
 
+    // HU-21: listado paginado y sincronización para consultar las fichas sin conexión
+
+    @Test
+    @DisplayName("HU-21: el listado se pagina y una página no repite fichas de otra")
+    void listadoPaginado() throws Exception {
+        for (int i = 0; i < 3; i++) {
+            crearFicha(nombreCientificoUnico());
+        }
+
+        String primera = mockMvc.perform(get(RUTA_FICHAS).param("tamano", "2"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.contenido.length()").value(2))
+            .andExpect(jsonPath("$.pagina").value(0))
+            .andExpect(jsonPath("$.tamano").value(2))
+            .andReturn().getResponse().getContentAsString(StandardCharsets.UTF_8);
+        int total = JsonPath.<Number>read(primera, "$.totalElementos").intValue();
+        assertThat(total).isGreaterThanOrEqualTo(3);
+        assertThat((Integer) JsonPath.read(primera, "$.totalPaginas")).isEqualTo((total + 1) / 2);
+
+        String segunda = mockMvc.perform(get(RUTA_FICHAS).param("pagina", "1").param("tamano", "2"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.pagina").value(1))
+            .andReturn().getResponse().getContentAsString(StandardCharsets.UTF_8);
+        List<String> idsPrimera = JsonPath.read(primera, "$.contenido[*].id");
+        List<String> idsSegunda = JsonPath.read(segunda, "$.contenido[*].id");
+        assertThat(idsSegunda).isNotEmpty().doesNotContainAnyElementsOf(idsPrimera);
+    }
+
+    @Test
+    @DisplayName("HU-21: por defecto se pide la página 0 de 20; el tamaño queda entre 1 y 50 y la página no baja de 0")
+    void limitesDeLaPaginacion() throws Exception {
+        crearFicha(nombreCientificoUnico());
+
+        mockMvc.perform(get(RUTA_FICHAS))
+            .andExpect(jsonPath("$.pagina").value(0))
+            .andExpect(jsonPath("$.tamano").value(20));
+        mockMvc.perform(get(RUTA_FICHAS).param("pagina", "-3").param("tamano", "500"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.pagina").value(0))
+            .andExpect(jsonPath("$.tamano").value(50));
+        mockMvc.perform(get(RUTA_FICHAS).param("tamano", "0"))
+            .andExpect(jsonPath("$.tamano").value(1))
+            .andExpect(jsonPath("$.contenido.length()").value(1));
+        mockMvc.perform(get(RUTA_FICHAS).param("pagina", "100000"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.contenido").isEmpty())
+            .andExpect(jsonPath("$.totalElementos", greaterThan(0)));
+        esperarError(mockMvc.perform(get(RUTA_FICHAS).param("pagina", "primera")), 400,
+            "El valor del parámetro 'pagina' no es válido.");
+    }
+
+    @Test
+    @DisplayName("HU-21: sin fecha, la sincronización trae todas las fichas, iguales a su consulta y con sus fotos")
+    void sincronizacionCompleta() throws Exception {
+        String id = idDe(crearFicha(nombreCientificoUnico()));
+        String detalle = mockMvc.perform(get(RUTA_FICHAS + "/" + id))
+            .andReturn().getResponse().getContentAsString(StandardCharsets.UTF_8);
+        int total = JsonPath.<Number>read(
+            mockMvc.perform(get(RUTA_FICHAS)).andReturn().getResponse().getContentAsString(StandardCharsets.UTF_8),
+            "$.totalElementos").intValue();
+
+        String respuesta = mockMvc.perform(get(RUTA_SINCRONIZACION))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.completa").value(true))
+            .andExpect(jsonPath("$.fechaSincronizacion").isNotEmpty())
+            .andExpect(jsonPath("$.idsEliminados").isEmpty())
+            .andExpect(jsonPath("$.fichas.length()").value(total))
+            .andReturn().getResponse().getContentAsString(StandardCharsets.UTF_8);
+
+        List<Map<String, Object>> sincronizada = JsonPath.read(respuesta, "$.fichas[?(@.id == '" + id + "')]");
+        Map<String, Object> consultada = JsonPath.read(detalle, "$");
+        assertThat(sincronizada).singleElement().isEqualTo(consultada);
+    }
+
+    @Test
+    @DisplayName("HU-21: con la fecha de la sincronización anterior solo llegan las fichas creadas o modificadas "
+            + "después, también si cambiaron sus fotos")
+    void sincronizacionIncremental() throws Exception {
+        String sinCambios = idDe(crearFicha(nombreCientificoUnico()));
+        String editada = idDe(crearFicha(nombreCientificoUnico()));
+        String conFotoNueva = idDe(crearFicha(nombreCientificoUnico()));
+        // Descargadas hace una hora, fuera del margen que repasa la sincronización
+        for (String id : List.of(sinCambios, editada, conFotoNueva)) {
+            cambiarFechaActualizacion(id, Instant.now().minus(1, ChronoUnit.HOURS));
+        }
+        String fechaAnterior = JsonPath.read(sincronizar(null), "$.fechaSincronizacion");
+
+        String nueva = idDe(crearFicha(nombreCientificoUnico()));
+        editar(tokenAdministrador, editada, formulario(nombreCientificoUnico()), null).andExpect(status().isOk());
+        agregarFoto(tokenAdministrador, conFotoNueva, fotoParaAgregar()).andExpect(status().isCreated());
+
+        String cambios = sincronizar(fechaAnterior);
+        assertThat((Boolean) JsonPath.read(cambios, "$.completa")).isFalse();
+        assertThat(idsSincronizados(cambios)).contains(nueva, editada, conFotoNueva).doesNotContain(sinCambios);
+        List<String> fotos = JsonPath.read(cambios, "$.fichas[?(@.id == '" + conFotoNueva + "')].fotos[*].id");
+        assertThat(fotos).hasSize(2);
+        assertThat(Instant.parse(JsonPath.read(cambios, "$.fechaSincronizacion")))
+            .isAfter(Instant.parse(fechaAnterior));
+    }
+
+    @Test
+    @DisplayName("HU-21: se repasa un margen antes de la fecha enviada, para no perder una edición que se confirmó "
+            + "justo después de la sincronización anterior")
+    void sincronizacionConMargen() throws Exception {
+        String id = idDe(crearFicha(nombreCientificoUnico()));
+        Instant fechaAnterior = Instant.now();
+        cambiarFechaActualizacion(id, fechaAnterior.minusSeconds(30));
+
+        assertThat(idsSincronizados(sincronizar(fechaAnterior.toString()))).contains(id);
+    }
+
+    @Test
+    @DisplayName("HU-21: una ficha eliminada, aunque sea directamente en la base de datos, llega en idsEliminados "
+            + "y sale de la sincronización completa")
+    void sincronizacionConFichaEliminada() throws Exception {
+        String eliminada = idDe(crearFicha(nombreCientificoUnico()));
+        String fechaAnterior = JsonPath.read(sincronizar(null), "$.fechaSincronizacion");
+
+        eliminarEnBaseDeDatos(eliminada);
+
+        String cambios = sincronizar(fechaAnterior);
+        assertThat(idsEliminados(cambios)).contains(eliminada);
+        assertThat(idsSincronizados(cambios)).doesNotContain(eliminada);
+        String completa = sincronizar(null);
+        assertThat(idsSincronizados(completa)).doesNotContain(eliminada);
+        assertThat(idsEliminados(completa)).isEmpty();
+    }
+
+    @Test
+    @DisplayName("HU-21: una eliminación anterior a la fecha enviada no se vuelve a informar")
+    void eliminacionAnteriorALaFecha() throws Exception {
+        String id = idDe(crearFicha(nombreCientificoUnico()));
+        eliminarEnBaseDeDatos(id);
+        jdbcTemplate.update("UPDATE fichas_eliminadas SET fecha_eliminacion = ? WHERE id = ?",
+            Timestamp.from(Instant.now().minus(1, ChronoUnit.HOURS)), UUID.fromString(id));
+
+        assertThat(idsEliminados(sincronizar(Instant.now().minus(10, ChronoUnit.MINUTES).toString())))
+            .doesNotContain(id);
+    }
+
+    @Test
+    @DisplayName("HU-21: una ficha que volvió a existir (por ejemplo, al restaurar un respaldo) no se informa como eliminada")
+    void fichaRestauradaNoSeInformaComoEliminada() throws Exception {
+        String id = idDe(crearFicha(nombreCientificoUnico()));
+        jdbcTemplate.update("INSERT INTO fichas_eliminadas (id, fecha_eliminacion) VALUES (?, now())", UUID.fromString(id));
+
+        String cambios = sincronizar(Instant.now().minus(10, ChronoUnit.MINUTES).toString());
+        assertThat(idsEliminados(cambios)).doesNotContain(id);
+        assertThat(idsSincronizados(cambios)).contains(id);
+    }
+
+    @Test
+    @DisplayName("HU-21: una fecha que no es ISO-8601 responde 400")
+    void sincronizacionConFechaInvalida() throws Exception {
+        esperarError(mockMvc.perform(get(RUTA_SINCRONIZACION).param("modificadoDesde", "ayer")), 400,
+            "El valor del parámetro 'modificadoDesde' no es válido.");
+    }
+
+    @Test
+    @DisplayName("HU-21: una fecha muy antigua o futura no hace fallar la sincronización")
+    void sincronizacionConFechaFueraDeRango() throws Exception {
+        String id = idDe(crearFicha(nombreCientificoUnico()));
+
+        assertThat(idsSincronizados(sincronizar("-1000000000-01-01T00:00:00Z"))).contains(id);
+        assertThat((Boolean) JsonPath.read(sincronizar("+1000000000-01-01T00:00:00Z"), "$.completa")).isFalse();
+    }
+
     // Utilidades
+
+    /** Recorre todas las páginas del listado (de una categoría, si no es nula) y devuelve las fichas en orden. */
+    private List<Map<String, Object>> listadoCompleto(String categoria) throws Exception {
+        List<Map<String, Object>> fichas = new ArrayList<>();
+        int pagina = 0;
+        int totalPaginas;
+        do {
+            var solicitud = get(RUTA_FICHAS).param("pagina", String.valueOf(pagina)).param("tamano", "50");
+            if (categoria != null) {
+                solicitud.param("categoria", categoria);
+            }
+            String respuesta = mockMvc.perform(solicitud)
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString(StandardCharsets.UTF_8);
+            fichas.addAll(JsonPath.read(respuesta, "$.contenido"));
+            totalPaginas = JsonPath.read(respuesta, "$.totalPaginas");
+            pagina++;
+        } while (pagina < totalPaginas);
+        return fichas;
+    }
+
+    private String sincronizar(String modificadoDesde) throws Exception {
+        var solicitud = get(RUTA_SINCRONIZACION);
+        if (modificadoDesde != null) {
+            solicitud.param("modificadoDesde", modificadoDesde);
+        }
+        return mockMvc.perform(solicitud)
+            .andExpect(status().isOk())
+            .andReturn().getResponse().getContentAsString(StandardCharsets.UTF_8);
+    }
+
+    private static List<String> idsSincronizados(String respuesta) {
+        return JsonPath.read(respuesta, "$.fichas[*].id");
+    }
+
+    private static List<String> idsEliminados(String respuesta) {
+        return JsonPath.read(respuesta, "$.idsEliminados");
+    }
+
+    private void cambiarFechaActualizacion(String id, Instant fecha) {
+        jdbcTemplate.update("UPDATE fichas_taxonomicas SET fecha_actualizacion = ? WHERE id = ?",
+            Timestamp.from(fecha), UUID.fromString(id));
+    }
+
+    /** No hay endpoint para borrar fichas: se borra como lo haría alguien desde pgAdmin. */
+    private void eliminarEnBaseDeDatos(String id) {
+        jdbcTemplate.update("DELETE FROM fichas_taxonomicas WHERE id = ?", UUID.fromString(id));
+    }
+
+    private static String idDe(String ficha) {
+        return JsonPath.read(ficha, "$.id");
+    }
 
     private ResultActions agregarFoto(String token, String id, MockMultipartFile foto) throws Exception {
         return enviar(multipart(RUTA_FICHAS + "/" + id + "/fotos"), token, Map.of(), foto);

@@ -18,6 +18,7 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.hibernate.annotations.BatchSize;
 
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
@@ -76,10 +77,14 @@ public class Taxon {
     @Column(name = "estado_conservacion", nullable = false, length = 2)
     private ConservationStatus estadoConservacion;
 
-    /** En orden de carga; la primera es la foto principal del listado. Siempre hay al menos una. */
+    /**
+     * En orden de carga; la primera es la foto principal del listado. Siempre hay al menos una. En los listados se
+     * cargan las fotos de hasta 50 fichas por consulta, en vez de una consulta por ficha.
+     */
     @Builder.Default
     @OneToMany(mappedBy = "ficha", cascade = CascadeType.ALL, orphanRemoval = true)
     @OrderBy("posicion ASC")
+    @BatchSize(size = 50)
     private List<TaxonPhoto> fotos = new ArrayList<>();
 
     @Column(name = "fecha_creacion", nullable = false, updatable = false)
