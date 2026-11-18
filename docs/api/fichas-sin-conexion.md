@@ -40,7 +40,7 @@ Las fichas salen en orden alfabético por nombre común: sin importar mayúscula
 {
   "fechaSincronizacion": "2026-11-10T15:30:00.123456Z",
   "completa": false,
-  "fichas": [ { "id": "…", "fotos": [ { "id": "…", "url": "…" } ], "…": "…" } ],
+  "fichas": [ { "id": "…", "fotos": [ { "id": "…", "url": "…", "urlMiniatura": "…" } ], "…": "…" } ],
   "idsEliminados": [ "5b0c7f0e-2f5d-4a8e-9a57-0c7d3c1b6e21" ]
 }
 ```
@@ -57,8 +57,10 @@ Cada elemento de `fichas` tiene el mismo formato de `GET /api/fichas-taxonomicas
    - guarda cada ficha de `fichas` por su `id`, insertándola o reemplazándola;
    - borra de la copia local los ids de `idsEliminados`, e ignora los que no tenga;
    - guarda la nueva `fechaSincronizacion`.
-4. Descarga las fotos nuevas desde `fotos[].url` y borra las que ya no aparezcan en su ficha. La URL de una foto
-   no cambia mientras la foto exista.
+4. Descarga las fotos nuevas desde `fotos[].url`, o solo sus miniaturas desde `fotos[].urlMiniatura` (ver
+   [procesamiento de fotos](procesamiento-de-fotos.md#miniaturas-en-las-respuestas)), y borra las que ya no aparezcan
+   en su ficha. La URL de una foto no cambia mientras la foto exista. La excepción es el reprocesamiento único de las
+   fotos antiguas: ahí la ficha llega como modificada, con las URLs nuevas.
 
 ### Reglas
 
@@ -69,7 +71,7 @@ Cada elemento de `fichas` tiene el mismo formato de `GET /api/fichas-taxonomicas
   perder una edición que se confirmó justo durante la sincronización anterior. Por eso las fichas se guardan por
   `id`, sin duplicarlas.
 - Un mismo `id` nunca aparece a la vez en `fichas` y en `idsEliminados`, así que no importa cuál se aplique primero.
-- Cuentan como cambios crear una ficha, editarla y agregarle o quitarle fotos.
+- Cuentan como cambios crear una ficha, editarla, agregarle o quitarle fotos, y reprocesar sus fotos.
 - Las eliminaciones se registran aunque la ficha se borre directamente en la base de datos, y no vencen: una
   `fechaSincronizacion` antigua sigue sirviendo.
 - La sincronización no se pagina: trae todo lo que cambió (en la primera descarga, todas las fichas).

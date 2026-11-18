@@ -80,6 +80,9 @@ Al arrancar se crea el primer **superadministrador** con `SUPERADMIN_CORREO` / `
 
 Las fotos se suben a un almacenamiento compatible con S3. En desarrollo es **RustFS** (contenedor `storage`), que reemplaza a Cloudflare R2; al arrancar, la API crea el bucket con lectura pública. Para usar R2 basta con cambiar las variables `STORAGE_*` del `.env` (ver comentarios en `.env.example`) y poner `STORAGE_CREAR_BUCKET=false`: el código es el mismo. En la base de datos se guarda la clave del objeto, no la URL, así que cambiar de proveedor no requiere migrar datos.
 
+Al subirlas, las fotos se enderezan, se reducen, se recomprimen, pierden sus metadatos (EXIF con GPS) y ganan una
+miniatura para los listados: ver [docs/api/procesamiento-de-fotos.md](docs/api/procesamiento-de-fotos.md).
+
 ### Base de datos
 
 El esquema se versiona con **Flyway** en `src/main/resources/db/migration` (`V<n>__descripcion.sql`). Hibernate solo valida (`ddl-auto: validate`). Nunca se edita una migración ya subida: los cambios van en una nueva.
