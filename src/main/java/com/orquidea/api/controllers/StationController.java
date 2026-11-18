@@ -30,7 +30,8 @@ public class StationController {
 
     private static final String DESCRIPCION_FORMULARIO = "Formulario multipart con nombre, descripcion, "
             + "decimalLatitude, decimalLongitude (con punto decimal), foto (jpg o png, máx. 10 MB) y fichaIds "
-            + "(opcional, ids separados por comas o en el campo repetido).";
+            + "(opcional, ids separados por comas o en el campo repetido). La foto se guarda optimizada, sin metadatos "
+            + "y con una miniatura para los listados (ver docs/api/procesamiento-de-fotos.md).";
 
     private final StationService stationService;
 
@@ -64,7 +65,8 @@ public class StationController {
             content = @Content(schema = @Schema(implementation = ApiErrorResponse.class)))
     @ApiResponse(responseCode = "403", description = "El usuario no es administrador",
             content = @Content(schema = @Schema(implementation = ApiErrorResponse.class)))
-    @ApiResponse(responseCode = "413", description = "La imagen supera el tamaño máximo",
+    @ApiResponse(responseCode = "413",
+            description = "La imagen supera el tamaño máximo (10 MB) o la resolución máxima (50 megapíxeles)",
             content = @Content(schema = @Schema(implementation = ApiErrorResponse.class)))
     public ResponseEntity<StationDto> crear(@Valid @ModelAttribute StationRequest solicitud) {
         StationDto estacion = stationService.crear(solicitud);
@@ -89,7 +91,8 @@ public class StationController {
             content = @Content(schema = @Schema(implementation = ApiErrorResponse.class)))
     @ApiResponse(responseCode = "404", description = "La estación no existe.",
             content = @Content(schema = @Schema(implementation = ApiErrorResponse.class)))
-    @ApiResponse(responseCode = "413", description = "La imagen supera el tamaño máximo",
+    @ApiResponse(responseCode = "413",
+            description = "La imagen supera el tamaño máximo (10 MB) o la resolución máxima (50 megapíxeles)",
             content = @Content(schema = @Schema(implementation = ApiErrorResponse.class)))
     public StationDto actualizar(@PathVariable UUID id, @Valid @ModelAttribute StationRequest solicitud) {
         return stationService.actualizar(id, solicitud);

@@ -20,4 +20,9 @@ public class TaxonPhotoDto {
 
     @Schema(description = "URL pública de la foto", example = "http://localhost:9000/orquidea/fichas/9d4e2c1a.jpg")
     private String url;
+
+    @Schema(description = "URL pública de la miniatura, para los listados. En una foto subida antes "
+            + "de las miniaturas y aún sin reprocesar es igual a url",
+            example = "http://localhost:9000/orquidea/fichas/miniaturas/9d4e2c1a.jpg")
+    private String urlMiniatura;
 }

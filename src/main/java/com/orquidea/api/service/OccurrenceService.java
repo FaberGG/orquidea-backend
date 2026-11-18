@@ -14,16 +14,14 @@ import com.orquidea.api.model.ReviewStatus;
 import com.orquidea.api.model.User;
 import com.orquidea.api.repository.OccurrenceRepository;
 import com.orquidea.api.repository.UserRepository;
-import com.orquidea.api.storage.ImageValidator;
-import com.orquidea.api.storage.ImageValidator.ValidatedImage;
-import com.orquidea.api.storage.StorageService;
+import com.orquidea.api.storage.PhotoStorage;
+import com.orquidea.api.storage.ProcessedImage;
+import com.orquidea.api.storage.StoredPhoto;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.transaction.support.TransactionSynchronization;
-import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.Optional;
@@ -47,8 +45,7 @@ public class OccurrenceService {
     private final OccurrenceRepository occurrenceRepository;
     private final UserRepository userRepository;
     private final OccurrenceMapper occurrenceMapper;
-    private final ImageValidator imageValidator;
-    private final StorageService storageService;
+    private final PhotoStorage photoStorage;
 
     /** Resultado de crear: el reporte y si es nuevo o ya existía (reenvío con el mismo id). */
     public record CreationResult(OccurrenceDto reporte, boolean nuevo) {
@@ -76,7 +73,7 @@ public class OccurrenceService {
             throw new InvalidRequestException(OccurrenceRequest.MENSAJE_COORDENADAS);
         }
         MultipartFile archivo = solicitud.getFoto();
-        ValidatedImage foto = archivo == null || archivo.isEmpty() ? null : imageValidator.validar(archivo, null);
+        ProcessedImage foto = archivo == null || archivo.isEmpty() ? null : photoStorage.preparar(archivo, null);
 
         Occurrence reporte = Occurrence.builder()
                 .id(solicitud.getId() != null ? solicitud.getId() : UUID.randomUUID())
@@ -89,7 +86,9 @@ public class OccurrenceService {
                 .recordedBy(autor)
                 .build();
         if (foto != null) {
-            reporte.setFotoClave(subirFoto(foto));
+            StoredPhoto guardada = photoStorage.subir(CARPETA_FOTOS, foto);
+            reporte.setFotoClave(guardada.clave());
+            reporte.setMiniaturaClave(guardada.miniaturaClave());
         }
         return new CreationResult(aDto(occurrenceRepository.saveAndFlush(reporte)), true);
     }
@@ -132,27 +131,15 @@ public class OccurrenceService {
         return PageResponse.de(occurrenceRepository.findByEstado(estado, paginacion), this::aDto);
     }
 
-    /** Sube la foto y programa su borrado si la transacción no llega a confirmarse. */
-    private String subirFoto(ValidatedImage foto) {
-        String clave = CARPETA_FOTOS + UUID.randomUUID() + "." + foto.tipo().extension();
-        storageService.subir(clave, foto.contenido(), foto.tipo().tipoContenido());
-        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-            @Override
-            public void afterCompletion(int estado) {
-                if (estado != STATUS_COMMITTED) {
-                    storageService.eliminar(clave);
-                }
-            }
-        });
-        return clave;
-    }
-
     private static String textoODesconocido(String valor) {
         return valor == null || valor.isBlank() ? DESCONOCIDO : valor.trim();
     }
 
     private OccurrenceDto aDto(Occurrence reporte) {
-        String urlFoto = reporte.getFotoClave() == null ? null : storageService.urlPublica(reporte.getFotoClave());
-        return occurrenceMapper.aDto(reporte, urlFoto);
+        if (reporte.getFotoClave() == null) {
+            return occurrenceMapper.aDto(reporte, null, null);
+        }
+        return occurrenceMapper.aDto(reporte, photoStorage.url(reporte.getFotoClave()),
+                photoStorage.urlMiniatura(reporte.getFotoClave(), reporte.getMiniaturaClave()));
     }
 }

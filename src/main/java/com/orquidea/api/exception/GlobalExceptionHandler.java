@@ -70,9 +70,9 @@ public class GlobalExceptionHandler {
         return construir(HttpStatus.BAD_REQUEST, ex.getMessage(), request);
     }
 
-    @ExceptionHandler(ImageTooLargeException.class)
+    @ExceptionHandler({ImageTooLargeException.class, ImageResolutionTooLargeException.class})
     public ResponseEntity<ApiErrorResponse> manejarImagenDemasiadoGrande(
-            ImageTooLargeException ex, HttpServletRequest request) {
+            RuntimeException ex, HttpServletRequest request) {
         return construir(HttpStatus.CONTENT_TOO_LARGE, ex.getMessage(), request);
     }
 

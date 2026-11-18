@@ -29,6 +29,10 @@ public class StationDto {
     @Schema(description = "URL pública de la foto", example = "http://localhost:9000/orquidea/estaciones/3c9a7e52.jpg")
     private String urlFoto;
 
+    @Schema(description = "URL pública de la miniatura de la foto, para los listados",
+            example = "http://localhost:9000/orquidea/estaciones/miniaturas/3c9a7e52.jpg")
+    private String urlMiniatura;
+
     @Schema(description = "Latitud (DwC: decimalLatitude)", example = "2.459800")
     private BigDecimal decimalLatitude;
 

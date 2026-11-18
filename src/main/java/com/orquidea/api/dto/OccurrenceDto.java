@@ -46,6 +46,10 @@ public class OccurrenceDto {
             example = "http://localhost:9000/orquidea/reportes/0f8e6a1c.jpg")
     private String urlFoto;
 
+    @Schema(description = "URL pública de la miniatura de la foto, para los listados, o null si el reporte no tiene "
+            + "foto", nullable = true, example = "http://localhost:9000/orquidea/reportes/miniaturas/0f8e6a1c.jpg")
+    private String urlMiniatura;
+
     @Schema(description = "Estado de revisión", example = "PENDIENTE")
     private ReviewStatus estado;
 

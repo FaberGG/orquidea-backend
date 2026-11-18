@@ -51,6 +51,10 @@ public class Station {
     @Column(name = "foto_clave", nullable = false, length = 300)
     private String fotoClave;
 
+    /** Clave de la miniatura para los listados; null en las fotos subidas antes de las miniaturas. */
+    @Column(name = "miniatura_clave", length = 300)
+    private String miniaturaClave;
+
     /** DwC: decimalLatitude */
     @Column(name = "latitud", nullable = false, precision = 9, scale = 6)
     private BigDecimal decimalLatitude;

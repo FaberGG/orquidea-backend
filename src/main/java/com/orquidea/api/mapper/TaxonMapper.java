@@ -30,8 +30,11 @@ public interface TaxonMapper {
     /** Las URLs dependen del almacenamiento, por eso llegan aparte; urlFoto es la de la foto principal. */
     @Mapping(target = "fotos", source = "fotosDto")
     @Mapping(target = "urlFoto", expression = "java(fotosDto.isEmpty() ? null : fotosDto.get(0).getUrl())")
+    @Mapping(target = "urlMiniatura",
+            expression = "java(fotosDto.isEmpty() ? null : fotosDto.get(0).getUrlMiniatura())")
     TaxonDto aDto(Taxon ficha, List<TaxonPhotoDto> fotosDto);
 
     @Mapping(target = "url", source = "url")
-    TaxonPhotoDto aFotoDto(TaxonPhoto foto, String url);
+    @Mapping(target = "urlMiniatura", source = "urlMiniatura")
+    TaxonPhotoDto aFotoDto(TaxonPhoto foto, String url, String urlMiniatura);
 }

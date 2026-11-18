@@ -45,6 +45,7 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.endsWith;
 import static org.hamcrest.Matchers.greaterThan;
+import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.startsWith;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -102,8 +103,10 @@ class TaxonControllerTest extends IntegrationTestBase {
                 .andExpect(jsonPath("$.rolEnHumedal").value("Dispersor de semillas"))
                 .andExpect(jsonPath("$.estadoConservacion").value("LC"))
                 .andExpect(jsonPath("$.urlFoto", endsWith(".png")))
+                .andExpect(jsonPath("$.urlMiniatura", containsString("/fichas/miniaturas/")))
                 .andExpect(jsonPath("$.fotos.length()").value(1))
                 .andExpect(jsonPath("$.fotos[0].id").isNotEmpty())
+                .andExpect(jsonPath("$.fotos[0].urlMiniatura", containsString("/fichas/miniaturas/")))
                 .andExpect(jsonPath("$.fechaCreacion").isNotEmpty())
                 .andExpect(jsonPath("$.fotoClave").doesNotExist())
                 .andReturn().getResponse().getContentAsString();
@@ -643,6 +646,8 @@ class TaxonControllerTest extends IntegrationTestBase {
                 .andReturn().getResponse().getContentAsString();
         String idPrincipal = JsonPath.read(conDos, "$.fotos[0].id");
         String urlPrincipal = JsonPath.read(conDos, "$.fotos[0].url");
+        String miniaturaPrincipal = JsonPath.read(conDos, "$.fotos[0].urlMiniatura");
+        assertThat(estadoHttp(miniaturaPrincipal)).isEqualTo(200);
         String urlSegunda = JsonPath.read(conDos, "$.fotos[1].url");
 
         eliminarFoto(tokenAdministrador, id, idPrincipal).andExpect(status().isNoContent());
@@ -652,6 +657,7 @@ class TaxonControllerTest extends IntegrationTestBase {
                 .andExpect(jsonPath("$.urlFoto").value(urlSegunda))
                 .andExpect(jsonPath("$.fechaActualizacion", not((String) JsonPath.read(conDos, "$.fechaActualizacion"))));
         assertThat(estadoHttp(urlPrincipal)).isEqualTo(404);
+        assertThat(estadoHttp(miniaturaPrincipal)).isEqualTo(404);
     }
 
     @Test

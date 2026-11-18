@@ -20,4 +20,8 @@ public class ComponentPhotoDto {
 
     @Schema(description = "URL pública de la foto", example = "http://localhost:9000/orquidea/componentes/9d4e2c1a.jpg")
     private String url;
+
+    @Schema(description = "URL pública de la miniatura, para los listados",
+            example = "http://localhost:9000/orquidea/componentes/miniaturas/9d4e2c1a.jpg")
+    private String urlMiniatura;
 }

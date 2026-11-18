@@ -42,6 +42,10 @@ public class TaxonPhoto {
     @Column(name = "foto_clave", nullable = false, length = 300)
     private String fotoClave;
 
+    /** Clave de la miniatura para los listados; null en las fotos subidas antes de las miniaturas. */
+    @Column(name = "miniatura_clave", length = 300)
+    private String miniaturaClave;
+
     /** Al crear llegan varias fotos en la misma petición, así que el orden no puede depender de la fecha. */
     @Column(nullable = false)
     private int posicion;

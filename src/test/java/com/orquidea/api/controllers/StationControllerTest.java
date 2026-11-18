@@ -38,6 +38,7 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.endsWith;
 import static org.hamcrest.Matchers.hasItem;
+import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.startsWith;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -89,6 +90,7 @@ class StationControllerTest extends IntegrationTestBase {
                 .andExpect(jsonPath("$.nombre").value("Mirador de la laguna"))
                 .andExpect(jsonPath("$.descripcion").value("Desde aquí se observan garzas"))
                 .andExpect(jsonPath("$.urlFoto", endsWith(".png")))
+                .andExpect(jsonPath("$.urlMiniatura", containsString("/estaciones/miniaturas/")))
                 .andExpect(jsonPath("$.decimalLatitude").value(2.4598))
                 .andExpect(jsonPath("$.decimalLongitude").value(-76.6115))
                 .andExpect(jsonPath("$.fichas.length()").value(2))
@@ -107,6 +109,7 @@ class StationControllerTest extends IntegrationTestBase {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[*].id", hasItem(id)));
         assertThat(estadoHttp(JsonPath.read(respuesta, "$.urlFoto"))).isEqualTo(200);
+        assertThat(estadoHttp(JsonPath.read(respuesta, "$.urlMiniatura"))).isEqualTo(200);
     }
 
     @Test
@@ -277,6 +280,7 @@ class StationControllerTest extends IntegrationTestBase {
     void edicionConFotoNueva() throws Exception {
         String creada = crearEstacion(formulario("Mirador"));
         String urlAnterior = JsonPath.read(creada, "$.urlFoto");
+        String miniaturaAnterior = JsonPath.read(creada, "$.urlMiniatura");
 
         String editada = editar(tokenAdministrador, JsonPath.read(creada, "$.id"), formulario("Mirador"),
                 new MockMultipartFile("foto", "nueva.jpg", "image/jpeg", jpeg))
@@ -286,6 +290,7 @@ class StationControllerTest extends IntegrationTestBase {
 
         assertThat(estadoHttp(JsonPath.read(editada, "$.urlFoto"))).isEqualTo(200);
         assertThat(estadoHttp(urlAnterior)).isEqualTo(404);
+        assertThat(estadoHttp(miniaturaAnterior)).isEqualTo(404);
     }
 
     @Test
@@ -338,6 +343,7 @@ class StationControllerTest extends IntegrationTestBase {
         mockMvc.perform(get(RUTA_ESTACIONES))
                 .andExpect(jsonPath("$[?(@.id == '" + id + "')]").isEmpty());
         assertThat(estadoHttp(JsonPath.read(creada, "$.urlFoto"))).isEqualTo(404);
+        assertThat(estadoHttp(JsonPath.read(creada, "$.urlMiniatura"))).isEqualTo(404);
         assertThat(taxonRepository.existsById(garza.getId())).isTrue();
     }
 

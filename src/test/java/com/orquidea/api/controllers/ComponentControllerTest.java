@@ -3,6 +3,7 @@ package com.orquidea.api.controllers;
 import com.jayway.jsonpath.JsonPath;
 import com.orquidea.api.IntegrationTestBase;
 import com.orquidea.api.model.Role;
+import com.orquidea.api.storage.TestImages;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -19,7 +20,9 @@ import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
 import java.util.UUID;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.contains;
+import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.endsWith;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -134,8 +137,11 @@ class ComponentControllerTest extends IntegrationTestBase {
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.tieneContenido").value(true))
                 .andExpect(jsonPath("$.fotos[0].url", endsWith(".png")))
+                .andExpect(jsonPath("$.fotos[0].urlMiniatura", containsString("/componentes/miniaturas/")))
                 .andReturn().getResponse().getContentAsString();
         String idFoto = JsonPath.read(respuesta, "$.fotos[0].id");
+        String urlMiniatura = JsonPath.read(respuesta, "$.fotos[0].urlMiniatura");
+        assertThat(TestImages.descargar(urlMiniatura).estado()).isEqualTo(200);
 
         mockMvc.perform(get(RUTA + "/INSECTOS")).andExpect(jsonPath("$.fotos[0].id").value(idFoto));
 
@@ -145,6 +151,7 @@ class ComponentControllerTest extends IntegrationTestBase {
         mockMvc.perform(get(RUTA + "/INSECTOS"))
                 .andExpect(jsonPath("$.fotos").isEmpty())
                 .andExpect(jsonPath("$.tieneContenido").value(false));
+        assertThat(TestImages.descargar(urlMiniatura).estado()).isEqualTo(404);
     }
 
     @Test

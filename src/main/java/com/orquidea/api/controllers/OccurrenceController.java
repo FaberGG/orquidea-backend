@@ -47,7 +47,8 @@ public class OccurrenceController {
             description = "USUARIO_REGISTRADO, ADMINISTRADOR o SUPERADMINISTRADOR. El reporte de un administrador "
                     + "también queda PENDIENTE y pasa por la revisión. Formulario multipart: la descripción es obligatoria; reino y "
                     + "clasificación sin valor quedan como desconocidos; la foto es opcional (jpg o png, máx. 10 MB). "
-                    + "El autor es el usuario autenticado. Ante un 201 el cliente muestra: "
+                    + "La foto se guarda optimizada, sin metadatos y con una miniatura para los listados "
+                    + "(ver docs/api/procesamiento-de-fotos.md). El autor es el usuario autenticado. Ante un 201 el cliente muestra: "
                     + "'Tu reporte fue enviado y será revisado por un administrador.'")
     @ApiResponse(responseCode = "201", description = "Reporte creado en estado PENDIENTE")
     @ApiResponse(responseCode = "200", description = "Ya existía un reporte propio con ese id; se devuelve sin duplicarlo")
@@ -57,7 +58,8 @@ public class OccurrenceController {
             content = @Content(schema = @Schema(implementation = ApiErrorResponse.class)))
     @ApiResponse(responseCode = "409", description = "Otro usuario ya registró un reporte con ese id",
             content = @Content(schema = @Schema(implementation = ApiErrorResponse.class)))
-    @ApiResponse(responseCode = "413", description = "La imagen supera el tamaño máximo",
+    @ApiResponse(responseCode = "413",
+            description = "La imagen supera el tamaño máximo (10 MB) o la resolución máxima (50 megapíxeles)",
             content = @Content(schema = @Schema(implementation = ApiErrorResponse.class)))
     public ResponseEntity<OccurrenceDto> crear(@Valid @ModelAttribute OccurrenceRequest solicitud,
                                                @AuthenticationPrincipal JwtPrincipal usuario) {

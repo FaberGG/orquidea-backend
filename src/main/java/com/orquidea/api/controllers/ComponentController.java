@@ -112,7 +112,8 @@ public class ComponentController {
     @Operation(summary = "Agregar una foto a un componente",
             description = "Solo ADMINISTRADOR o SUPERADMINISTRADOR. Formulario multipart con el campo 'foto' "
                     + "(jpg o png, máx. 10 MB). Cada componente admite como máximo 10 fotos. "
-                    + "Devuelve el componente completo con su lista de fotos actualizada.")
+                    + "Devuelve el componente completo con su lista de fotos actualizada. La foto se guarda "
+                    + "optimizada, sin metadatos y con una miniatura para los listados (ver docs/api/procesamiento-de-fotos.md).")
     @ApiResponse(responseCode = "201", description = "Foto agregada")
     @ApiResponse(responseCode = "400", description = "Debes seleccionar una imagen. / El formato de la imagen no es válido.",
             content = @Content(schema = @Schema(implementation = ApiErrorResponse.class)))
@@ -124,7 +125,8 @@ public class ComponentController {
             content = @Content(schema = @Schema(implementation = ApiErrorResponse.class)))
     @ApiResponse(responseCode = "409", description = "El componente ya tiene el máximo de fotos",
             content = @Content(schema = @Schema(implementation = ApiErrorResponse.class)))
-    @ApiResponse(responseCode = "413", description = "La imagen supera el tamaño máximo",
+    @ApiResponse(responseCode = "413",
+            description = "La imagen supera el tamaño máximo (10 MB) o la resolución máxima (50 megapíxeles)",
             content = @Content(schema = @Schema(implementation = ApiErrorResponse.class)))
     public ResponseEntity<ComponentDto> agregarFoto(
             @Parameter(description = DESCRIPCION_TIPO, example = "AVES") @PathVariable String tipo,

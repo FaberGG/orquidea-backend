@@ -44,7 +44,8 @@ public class TaxonController {
     @Operation(summary = "Crear ficha taxonómica",
             description = "Solo ADMINISTRADOR o SUPERADMINISTRADOR. Formulario multipart con los datos y de 1 a 10 fotos "
                     + "en el campo 'fotos', repetido por archivo (jpg o png, máx. 10 MB cada una). Las fotos quedan en el "
-                    + "orden de envío y la primera es la principal del listado (urlFoto).")
+                    + "orden de envío y la primera es la principal del listado (urlFoto). Las fotos se guardan "
+                    + "optimizadas, sin metadatos y con una miniatura para los listados (ver docs/api/procesamiento-de-fotos.md).")
     @ApiResponse(responseCode = "201", description = "Ficha creada y publicada")
     @ApiResponse(responseCode = "400", description = "Debes completar todos los campos obligatorios. / Debes seleccionar una imagen. "
             + "/ El formato de la imagen no es válido.",
@@ -55,7 +56,8 @@ public class TaxonController {
             content = @Content(schema = @Schema(implementation = ApiErrorResponse.class)))
     @ApiResponse(responseCode = "409", description = "Ya existe una ficha con ese nombre científico / Más de 10 fotos",
             content = @Content(schema = @Schema(implementation = ApiErrorResponse.class)))
-    @ApiResponse(responseCode = "413", description = "La imagen supera el tamaño máximo",
+    @ApiResponse(responseCode = "413",
+            description = "La imagen supera el tamaño máximo (10 MB) o la resolución máxima (50 megapíxeles)",
             content = @Content(schema = @Schema(implementation = ApiErrorResponse.class)))
     public ResponseEntity<TaxonDto> crear(@Valid @ModelAttribute TaxonRequest solicitud) {
         TaxonDto ficha = taxonService.crear(solicitud);
@@ -90,7 +92,8 @@ public class TaxonController {
     @Operation(summary = "Agregar una foto a una ficha",
             description = "Solo ADMINISTRADOR o SUPERADMINISTRADOR. Formulario multipart con el campo 'foto' "
                     + "(jpg o png, máx. 10 MB). Cada ficha admite como máximo 10 fotos y la nueva queda al final. "
-                    + "Devuelve la ficha completa con su lista de fotos actualizada.")
+                    + "Devuelve la ficha completa con su lista de fotos actualizada. La foto se guarda "
+                    + "optimizada, sin metadatos y con una miniatura para los listados (ver docs/api/procesamiento-de-fotos.md).")
     @ApiResponse(responseCode = "201", description = "Foto agregada")
     @ApiResponse(responseCode = "400", description = "Debes seleccionar una imagen. / El formato de la imagen no es válido.",
             content = @Content(schema = @Schema(implementation = ApiErrorResponse.class)))
@@ -102,7 +105,8 @@ public class TaxonController {
             content = @Content(schema = @Schema(implementation = ApiErrorResponse.class)))
     @ApiResponse(responseCode = "409", description = "La ficha ya tiene el máximo de fotos",
             content = @Content(schema = @Schema(implementation = ApiErrorResponse.class)))
-    @ApiResponse(responseCode = "413", description = "La imagen supera el tamaño máximo",
+    @ApiResponse(responseCode = "413",
+            description = "La imagen supera el tamaño máximo (10 MB) o la resolución máxima (50 megapíxeles)",
             content = @Content(schema = @Schema(implementation = ApiErrorResponse.class)))
     public ResponseEntity<TaxonDto> agregarFoto(
             @PathVariable UUID id,

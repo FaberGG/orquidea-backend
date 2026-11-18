@@ -13,14 +13,12 @@ import com.orquidea.api.mapper.ComponentMapper;
 import com.orquidea.api.model.WetlandComponent;
 import com.orquidea.api.model.WetlandComponentPhoto;
 import com.orquidea.api.repository.ComponentRepository;
-import com.orquidea.api.storage.ImageValidator;
-import com.orquidea.api.storage.ImageValidator.ValidatedImage;
-import com.orquidea.api.storage.StorageService;
+import com.orquidea.api.storage.PhotoStorage;
+import com.orquidea.api.storage.ProcessedImage;
+import com.orquidea.api.storage.StoredPhoto;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.transaction.support.TransactionSynchronization;
-import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.data.domain.Sort;
 
@@ -50,8 +48,7 @@ public class ComponentService {
 
     private final ComponentRepository componentRepository;
     private final ComponentMapper componentMapper;
-    private final ImageValidator imageValidator;
-    private final StorageService storageService;
+    private final PhotoStorage photoStorage;
     private final ComponentProperties propiedades;
 
     /** Siempre los mismos componentes, en el orden del enum; los que no tienen información vienen marcados. */
@@ -112,11 +109,13 @@ public class ComponentService {
             throw new OperationNotAllowedException(
                     "El componente ya tiene el máximo de " + propiedades.fotosMaximas() + " fotos.");
         }
-        ValidatedImage foto = imageValidator.validar(archivo, MENSAJE_FOTO_OBLIGATORIA);
+        ProcessedImage foto = photoStorage.preparar(archivo, MENSAJE_FOTO_OBLIGATORIA);
 
+        StoredPhoto guardada = photoStorage.subir(CARPETA_FOTOS, foto);
         componente.getFotos().add(WetlandComponentPhoto.builder()
                 .componente(componente)
-                .fotoClave(subirFoto(foto))
+                .fotoClave(guardada.clave())
+                .miniaturaClave(guardada.miniaturaClave())
                 .build());
         componente.setFechaActualizacion(Instant.now());
         return aDto(componentRepository.saveAndFlush(componente));
@@ -133,7 +132,7 @@ public class ComponentService {
         componente.getFotos().remove(foto);
         componente.setFechaActualizacion(Instant.now());
         componentRepository.saveAndFlush(componente);
-        alConfirmar(() -> storageService.eliminar(foto.getFotoClave()));
+        photoStorage.eliminarAlConfirmar(foto.getFotoClave(), foto.getMiniaturaClave());
     }
 
     /** Mayúsculas sin tildes, con "_" en lugar de espacios y signos: "Componente hídrico" pasa a COMPONENTE_HIDRICO. */
@@ -154,33 +153,10 @@ public class ComponentService {
                 .orElseThrow(() -> new ResourceNotFoundException(MENSAJE_NO_EXISTE));
     }
 
-    /** Sube la foto y programa su borrado si la transacción no llega a confirmarse. */
-    private String subirFoto(ValidatedImage foto) {
-        String clave = CARPETA_FOTOS + UUID.randomUUID() + "." + foto.tipo().extension();
-        storageService.subir(clave, foto.contenido(), foto.tipo().tipoContenido());
-        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-            @Override
-            public void afterCompletion(int estado) {
-                if (estado != STATUS_COMMITTED) {
-                    storageService.eliminar(clave);
-                }
-            }
-        });
-        return clave;
-    }
-
-    private static void alConfirmar(Runnable accion) {
-        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-            @Override
-            public void afterCommit() {
-                accion.run();
-            }
-        });
-    }
-
     private ComponentDto aDto(WetlandComponent componente) {
         List<ComponentPhotoDto> fotos = componente.getFotos().stream()
-                .map(foto -> componentMapper.aFotoDto(foto, storageService.urlPublica(foto.getFotoClave())))
+                .map(foto -> componentMapper.aFotoDto(foto, photoStorage.url(foto.getFotoClave()),
+                        photoStorage.urlMiniatura(foto.getFotoClave(), foto.getMiniaturaClave())))
                 .toList();
         boolean tieneContenido = !fotos.isEmpty()
                 || (componente.getDescripcion() != null && !componente.getDescripcion().isBlank());

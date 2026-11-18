@@ -42,6 +42,10 @@ public class WetlandComponentPhoto {
     @Column(name = "foto_clave", nullable = false, length = 300)
     private String fotoClave;
 
+    /** Clave de la miniatura para los listados; null en las fotos subidas antes de las miniaturas. */
+    @Column(name = "miniatura_clave", length = 300)
+    private String miniaturaClave;
+
     @Column(name = "fecha_creacion", nullable = false, updatable = false)
     private Instant fechaCreacion;
 
