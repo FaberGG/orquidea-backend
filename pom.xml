@@ -169,6 +169,13 @@
             <version>3.5.3</version>
         </dependency>
 
+        <!-- Lector JPEG para optimizar las fotos: abre los que el de la JDK rechaza (CMYK, algunos celulares). -->
+        <dependency>
+            <groupId>com.twelvemonkeys.imageio</groupId>
+            <artifactId>imageio-jpeg</artifactId>
+            <version>3.15.3</version>
+        </dependency>
+
     </dependencies>
 
     <build>
