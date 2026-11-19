@@ -48,9 +48,15 @@ public class OccurrenceController {
                     + "también queda PENDIENTE y pasa por la revisión. Formulario multipart: la descripción es obligatoria; reino y "
                     + "clasificación sin valor quedan como desconocidos; la foto es opcional (jpg o png, máx. 10 MB). "
                     + "El autor es el usuario autenticado. Ante un 201 el cliente muestra: "
-                    + "'Tu reporte fue enviado y será revisado por un administrador.'")
+                    + "'Tu reporte fue enviado y será revisado por un administrador.' "
+                    + "Envío repetido (HU-22, sincronización sin conexión): el cliente puede generar el UUID en el campo "
+                    + "'id' al guardar el reporte en el dispositivo y reenviarlo con el mismo 'id' las veces que haga falta. "
+                    + "Si ya existe un reporte con ese 'id' y es del mismo autor, responde 200 con el reporte que ya estaba "
+                    + "guardado (con su estado actual) y no crea otro ni sube otra foto; los datos y la foto del reenvío se "
+                    + "ignoran. Si el 'id' pertenece a otro usuario responde 409. Tanto 201 como 200 significan que el "
+                    + "reporte está en el servidor: el cliente puede retirarlo de su cola de sincronización.")
     @ApiResponse(responseCode = "201", description = "Reporte creado en estado PENDIENTE")
-    @ApiResponse(responseCode = "200", description = "Ya existía un reporte propio con ese id; se devuelve sin duplicarlo")
+    @ApiResponse(responseCode = "200", description = "Ya existía un reporte propio con ese id (reenvío o sincronización): se devuelve el guardado, sin duplicarlo ni subir otra foto")
     @ApiResponse(responseCode = "400", description = "La descripción es obligatoria. / El formato de la imagen no es válido.",
             content = @Content(schema = @Schema(implementation = ApiErrorResponse.class)))
     @ApiResponse(responseCode = "401", description = "Sin sesión iniciada",

@@ -29,8 +29,10 @@ public class OccurrenceRequest {
 
     public static final String MENSAJE_COORDENADAS = "Las coordenadas ingresadas no son válidas.";
 
-    @Schema(description = "Id generado por el cliente (opcional). Reenviar el mismo id no duplica el reporte, "
-            + "lo que permite reintentar o sincronizar reportes creados sin conexión", example = "0f8e6a1c-3b2d-4c5e-9f10-7a6b5c4d3e2f")
+    @Schema(description = "Id (UUID) generado por el cliente (opcional). Reenviar el mismo id no duplica el reporte, "
+            + "lo que permite reintentar o sincronizar reportes creados sin conexión: si el reporte ya existe y es del "
+            + "mismo autor, la API responde 200 con el reporte guardado (los datos del reenvío se ignoran); si es de "
+            + "otro usuario, responde 409", example = "0f8e6a1c-3b2d-4c5e-9f10-7a6b5c4d3e2f")
     private UUID id;
 
     @NotBlank(message = "La descripción es obligatoria.")
