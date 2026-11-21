@@ -1,10 +1,15 @@
+# Contexto del proyecto
+El Humedal La Orquídea, en el barrio La María Occidente de Popayán, es un ecosistema en recuperación que el comité ambiental local, junto con voluntarios de la Universidad del Cauca, ha caracterizado biológicamente durante años (aves, plantas, mamíferos e insectos). El problema es que toda esa información permanece dispersa y es de difícil acceso tanto para la comunidad como para los visitantes del sendero.
+
+# Propuesta ( Orquídea — App móvil del Humedal )
+una aplicación para Android e iOS que centralice, gestione y divulgue esa información, para que el Comité Ambiental La Orquídea la administre de forma autónoma.
+
+Permite a los visitantes conocer la biodiversidad del humedal mediante fichas taxonómicas, mapa del sendero, contenido
+educativo y reportes ciudadanos de avistamientos; y a los administradores gestionar ese contenido.
+
 # Orquídea Backend
 
 Backend para la **Plataforma de Educación Ambiental e Interactividad del Humedal La Orquídea**: un monolito Spring Boot por capas que gestiona fichas taxonómicas (según Darwin Core), la interactividad del sendero y el almacenamiento de activos en Cloudflare R2 (S3-compatible).
-
-## Contexto del proyecto
-
-El Humedal La Orquídea, en el barrio La María Occidente de Popayán, es un ecosistema en recuperación que el comité ambiental local, junto con voluntarios de la Universidad del Cauca, ha caracterizado biológicamente durante años (aves, plantas, mamíferos e insectos). El problema es que toda esa información permanece dispersa y es de difícil acceso tanto para la comunidad como para los visitantes del sendero.
 
 Este backend es el soporte de la solución propuesta: una plataforma digital que centraliza y divulga públicamente la información biológica del humedal a través de fichas de especies, un mapa interactivo georreferenciado, códigos QR en las estaciones físicas del sendero y un módulo de reporte ciudadano de avistamientos, con soporte de funcionamiento sin conexión a internet. El objetivo es que el comité ambiental pueda administrar este contenido de forma autónoma, sin requerir conocimientos de programación.
 
