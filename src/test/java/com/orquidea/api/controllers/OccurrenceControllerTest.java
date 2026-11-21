@@ -3,6 +3,8 @@ package com.orquidea.api.controllers;
 import com.jayway.jsonpath.JsonPath;
 import com.orquidea.api.IntegrationTestBase;
 import com.orquidea.api.model.Role;
+import com.orquidea.api.repository.OccurrenceRepository;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -38,7 +40,10 @@ class OccurrenceControllerTest extends IntegrationTestBase {
     private static final String RUTA_PENDIENTES = RUTA_REPORTES + "/pendientes";
 
     private static byte[] png;
-
+    
+    @Autowired
+    private OccurrenceRepository occurrenceRepository;
+    
     private String tokenUsuario;
     private String tokenAdministrador;
 
@@ -204,6 +209,115 @@ class OccurrenceControllerTest extends IntegrationTestBase {
                 "Ya existe un reporte con ese identificador.");
     }
 
+    // HU-22: sincronización de reportes creados sin conexión (el cliente genera el id y reenvía)
+
+    @Test
+    @DisplayName("HU-22: reenviar con foto el mismo id devuelve el reporte guardado, sin duplicarlo ni subir otra foto")
+    void reenvioConFotoNoDuplica() throws Exception {
+        String id = UUID.randomUUID().toString();
+        Map<String, String> datos = formulario();
+        datos.put("id", id);
+        String urlOriginal = JsonPath.read(crear(tokenUsuario, datos, fotoPng())
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.id").value(id))
+            .andReturn().getResponse().getContentAsString(), "$.urlFoto");
+        long total = occurrenceRepository.count();
+
+        crear(tokenUsuario, datos, fotoPng())
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.id").value(id))
+            .andExpect(jsonPath("$.urlFoto").value(urlOriginal));
+
+        assertThat(occurrenceRepository.count()).isEqualTo(total);
+    }
+
+    @Test
+    @DisplayName("HU-22: reenviar sin foto un reporte que ya tenía foto conserva la foto original")
+    void reenvioSinFotoConservaLaFoto() throws Exception {
+        String id = UUID.randomUUID().toString();
+        Map<String, String> datos = formulario();
+        datos.put("id", id);
+        String urlOriginal = JsonPath.read(crear(tokenUsuario, datos, fotoPng())
+            .andExpect(status().isCreated())
+            .andReturn().getResponse().getContentAsString(), "$.urlFoto");
+
+        crear(tokenUsuario, datos, null)
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.id").value(id))
+            .andExpect(jsonPath("$.urlFoto").value(urlOriginal));
+    }
+
+    @Test
+    @DisplayName("HU-22: reenviar con foto un reporte que no la tenía no le agrega foto")
+    void reenvioConFotoNoAgregaFoto() throws Exception {
+        String id = UUID.randomUUID().toString();
+        Map<String, String> datos = formulario();
+        datos.put("id", id);
+        crear(tokenUsuario, datos, null).andExpect(status().isCreated());
+
+        crear(tokenUsuario, datos, fotoPng())
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.id").value(id))
+            .andExpect(jsonPath("$.urlFoto").doesNotExist());
+    }
+
+    @Test
+    @DisplayName("HU-22: varios reenvíos del mismo id dejan un solo reporte")
+    void variosReenviosUnSoloReporte() throws Exception {
+        String id = UUID.randomUUID().toString();
+        Map<String, String> datos = formulario();
+        datos.put("id", id);
+        long total = occurrenceRepository.count();
+
+        crear(tokenUsuario, datos, null).andExpect(status().isCreated());
+        crear(tokenUsuario, datos, fotoPng()).andExpect(status().isOk());
+        crear(tokenUsuario, datos, null).andExpect(status().isOk());
+
+        assertThat(occurrenceRepository.count()).isEqualTo(total + 1);
+    }
+
+    @Test
+    @DisplayName("HU-22: un reenvío posterior a la revisión devuelve el reporte con su estado actual")
+    void reenvioDespuesDeLaRevision() throws Exception {
+        String id = UUID.randomUUID().toString();
+        Map<String, String> datos = formulario();
+        datos.put("id", id);
+        crear(tokenUsuario, datos, null).andExpect(status().isCreated());
+        mockMvc.perform(conToken(post(RUTA_REPORTES + "/" + id + "/aprobar"), tokenAdministrador))
+            .andExpect(status().isOk());
+
+        crear(tokenUsuario, datos, null)
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.id").value(id))
+            .andExpect(jsonPath("$.estado").value("APROBADO"));
+    }
+
+    @Test
+    @DisplayName("HU-22: el id de otro usuario se rechaza con 409, con o sin foto, y el reporte original no cambia")
+    void idDeOtroUsuarioConFoto() throws Exception {
+        String id = UUID.randomUUID().toString();
+        Map<String, String> datos = formulario();
+        datos.put("id", id);
+        String urlOriginal = JsonPath.read(crear(tokenUsuario, datos, fotoPng())
+            .andExpect(status().isCreated())
+            .andReturn().getResponse().getContentAsString(), "$.urlFoto");
+        long total = occurrenceRepository.count();
+
+        Map<String, String> ajeno = formulario();
+        ajeno.put("id", id);
+        ajeno.put("occurrenceRemarks", "Intento de otro usuario");
+        String mensaje = "Ya existe un reporte con ese identificador.";
+        esperarError(crear(tokenDeUsuarioNuevo(Role.USUARIO_REGISTRADO), ajeno, fotoPng()), 409, mensaje);
+        esperarError(crear(tokenDeUsuarioNuevo(Role.USUARIO_REGISTRADO), ajeno, null), 409, mensaje);
+        esperarError(crear(tokenAdministrador, ajeno, null), 409, mensaje);
+
+        assertThat(occurrenceRepository.count()).isEqualTo(total);
+        crear(tokenUsuario, datos, null)
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.occurrenceRemarks").value("Un ave azul comiendo frutos"))
+            .andExpect(jsonPath("$.urlFoto").value(urlOriginal));
+    }
+    
     @Test
     @DisplayName("HU-18: sin sesión no se pueden crear reportes")
     void creacionSinSesion() throws Exception {
@@ -427,5 +541,10 @@ class OccurrenceControllerTest extends IntegrationTestBase {
         datos.put("decimalLatitude", "2.459800");
         datos.put("decimalLongitude", "-76.611500");
         return datos;
+    }
+
+    /** Foto PNG válida; se crea una nueva por llamada porque MockMultipartFile se consume al enviarse. */
+    private static MockMultipartFile fotoPng() {
+        return new MockMultipartFile("foto", "ave.png", "image/png", png);
     }
 }
