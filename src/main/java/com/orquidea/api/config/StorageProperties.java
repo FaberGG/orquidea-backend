@@ -11,6 +11,8 @@ import org.springframework.util.unit.DataSize;
  * @param urlPublica         base pública desde la que el navegador lee los objetos (R2: dominio público del bucket)
  * @param crearBucket        crea el bucket con lectura pública al arrancar; solo para desarrollo
  * @param tamanoMaximoImagen límite de las fotos subidas
+ * @param imagen             cómo se optimizan las fotos al subirlas
+ * @param reprocesarFotos    optimiza al arrancar las fotos subidas antes de que existiera la optimización
  */
 @ConfigurationProperties(prefix = "app.storage")
 public record StorageProperties(
@@ -21,5 +23,27 @@ public record StorageProperties(
         String bucket,
         String urlPublica,
         boolean crearBucket,
-        DataSize tamanoMaximoImagen) {
+        DataSize tamanoMaximoImagen,
+        Imagen imagen,
+        ReprocessingMode reprocesarFotos) {
+
+    /**
+     * @param anchoMaximo               ancho de la foto guardada, medido ya derecha; las más angostas no se agrandan
+     * @param anchoMiniatura            ancho de la miniatura para los listados
+     * @param calidadJpeg               de 0 a 1; se codifica con color completo (4:4:4)
+     * @param megapixelesMaximos        resolución máxima aceptada: decodificar una foto ocupa 4 bytes por píxel
+     * @param procesamientosSimultaneos fotos que se procesan a la vez, para acotar la memoria
+     */
+    public record Imagen(
+            int anchoMaximo,
+            int anchoMiniatura,
+            float calidadJpeg,
+            int megapixelesMaximos,
+            int procesamientosSimultaneos) {
+    }
+
+    /** NO no hace nada; SIMULAR solo informa en el log cuánto se ahorraría; APLICAR reemplaza las fotos. */
+    public enum ReprocessingMode {
+        NO, SIMULAR, APLICAR
+    }
 }

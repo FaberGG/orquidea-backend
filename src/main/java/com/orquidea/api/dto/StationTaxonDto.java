@@ -23,4 +23,8 @@ public class StationTaxonDto {
 
     @Schema(description = "URL pública de la foto principal de la ficha", example = "http://localhost:9000/orquidea/fichas/5b0c7f0e.jpg")
     private String urlFoto;
+
+    @Schema(description = "URL pública de la miniatura de la foto principal de la ficha",
+            example = "http://localhost:9000/orquidea/fichas/miniaturas/5b0c7f0e.jpg")
+    private String urlMiniatura;
 }

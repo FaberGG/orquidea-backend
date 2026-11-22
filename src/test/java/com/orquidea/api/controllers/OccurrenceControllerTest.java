@@ -25,6 +25,7 @@ import java.util.Map;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.endsWith;
 import static org.hamcrest.Matchers.hasItem;
 import static org.hamcrest.Matchers.not;
@@ -76,6 +77,7 @@ class OccurrenceControllerTest extends IntegrationTestBase {
                 .andExpect(jsonPath("$.decimalLatitude").value(2.4598))
                 .andExpect(jsonPath("$.decimalLongitude").value(-76.6115))
                 .andExpect(jsonPath("$.urlFoto").doesNotExist())
+                .andExpect(jsonPath("$.urlMiniatura").doesNotExist())
                 .andExpect(jsonPath("$.fechaCreacion").isNotEmpty())
                 .andExpect(jsonPath("$.fechaRevision").doesNotExist());
     }
@@ -85,7 +87,8 @@ class OccurrenceControllerTest extends IntegrationTestBase {
     void creacionConFoto() throws Exception {
         crear(tokenUsuario, formulario(), new MockMultipartFile("foto", "ave.png", "image/png", png))
                 .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.urlFoto", endsWith(".png")));
+                .andExpect(jsonPath("$.urlFoto", endsWith(".png")))
+                .andExpect(jsonPath("$.urlMiniatura", containsString("/reportes/miniaturas/")));
     }
 
     @Test

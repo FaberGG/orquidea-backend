@@ -9,6 +9,8 @@ public interface StorageService {
 
     void eliminar(String clave);
 
+    byte[] descargar(String clave);
+
     /** URL desde la que el navegador puede leer el objeto sin autenticarse. */
     String urlPublica(String clave);
 

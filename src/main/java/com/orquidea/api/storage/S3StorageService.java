@@ -40,6 +40,11 @@ public class S3StorageService implements StorageService {
     }
 
     @Override
+    public byte[] descargar(String clave) {
+        return clienteS3.getObjectAsBytes(solicitud -> solicitud.bucket(propiedades.bucket()).key(clave)).asByteArray();
+    }
+
+    @Override
     public String urlPublica(String clave) {
         String base = propiedades.urlPublica();
         return (base.endsWith("/") ? base : base + "/") + clave;

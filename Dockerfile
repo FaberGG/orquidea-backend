@@ -15,4 +15,5 @@ COPY --from=builder /build/target/orquidea-backend.jar .
 
 EXPOSE 8080
 
-ENTRYPOINT ["java", "-XX:+UseG1GC", "-jar", "orquidea-backend.jar"]
+# Por defecto la JVM solo usa el 25 % de la memoria del contenedor; procesar fotos grandes necesita más
+ENTRYPOINT ["java", "-XX:+UseG1GC", "-XX:MaxRAMPercentage=75", "-jar", "orquidea-backend.jar"]

@@ -16,6 +16,7 @@ public interface StationMapper {
 
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "fotoClave", ignore = true)
+    @Mapping(target = "miniaturaClave", ignore = true)
     @Mapping(target = "fichas", ignore = true)
     @Mapping(target = "fechaCreacion", ignore = true)
     @Mapping(target = "fechaActualizacion", ignore = true)
@@ -24,6 +25,7 @@ public interface StationMapper {
     /** Copia los datos editables sobre la estación existente; la foto y las fichas las maneja el servicio. */
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "fotoClave", ignore = true)
+    @Mapping(target = "miniaturaClave", ignore = true)
     @Mapping(target = "fichas", ignore = true)
     @Mapping(target = "fechaCreacion", ignore = true)
     @Mapping(target = "fechaActualizacion", ignore = true)
@@ -31,9 +33,11 @@ public interface StationMapper {
 
     /** Las URLs dependen del almacenamiento, por eso llegan aparte. */
     @Mapping(target = "urlFoto", source = "urlFoto")
+    @Mapping(target = "urlMiniatura", source = "urlMiniatura")
     @Mapping(target = "fichas", source = "fichasDto")
-    StationDto aDto(Station estacion, String urlFoto, List<StationTaxonDto> fichasDto);
+    StationDto aDto(Station estacion, String urlFoto, String urlMiniatura, List<StationTaxonDto> fichasDto);
 
     @Mapping(target = "urlFoto", source = "urlFoto")
-    StationTaxonDto aFichaDto(Taxon ficha, String urlFoto);
+    @Mapping(target = "urlMiniatura", source = "urlMiniatura")
+    StationTaxonDto aFichaDto(Taxon ficha, String urlFoto, String urlMiniatura);
 }

@@ -1,9 +1,11 @@
 package com.orquidea.api.service;
 
 import com.orquidea.api.config.TaxonProperties;
+import com.orquidea.api.dto.PageResponse;
 import com.orquidea.api.dto.TaxonDto;
 import com.orquidea.api.dto.TaxonPhotoDto;
 import com.orquidea.api.dto.TaxonRequest;
+import com.orquidea.api.dto.TaxonSyncResponse;
 import com.orquidea.api.exception.DuplicateResourceException;
 import com.orquidea.api.exception.InvalidRequestException;
 import com.orquidea.api.exception.OperationNotAllowedException;
@@ -12,40 +14,49 @@ import com.orquidea.api.mapper.TaxonMapper;
 import com.orquidea.api.model.Taxon;
 import com.orquidea.api.model.TaxonCategory;
 import com.orquidea.api.model.TaxonPhoto;
+import com.orquidea.api.repository.DeletedTaxonRepository;
 import com.orquidea.api.repository.TaxonRepository;
-import com.orquidea.api.storage.StorageService;
-import com.orquidea.api.storage.ImageValidator;
-import com.orquidea.api.storage.ImageValidator.ValidatedImage;
+import com.orquidea.api.storage.PhotoStorage;
+import com.orquidea.api.storage.ProcessedImage;
+import com.orquidea.api.storage.StoredPhoto;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.transaction.support.TransactionSynchronization;
-import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.time.Duration;
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.UUID;
 
 /**
- * Las fotos viven fuera de la base de datos, así que su limpieza se ata al resultado de la transacción:
- * si se revierte, se borran las fotos recién subidas; si se confirma, se borra la foto eliminada.
+ * Las fotos viven fuera de la base de datos; PhotoStorage ata su limpieza al resultado de la transacción.
  */
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class TaxonService {
 
+    public static final int TAMANO_MAXIMO_PAGINA = 50;
+
+    private static final Sort ORDEN_ALFABETICO = Sort.by("vernacularName", "id");
+    private static final Sort ORDEN_SINCRONIZACION = Sort.by("fechaActualizacion", "id");
+    /** Cuánto se repasa hacia atrás al sincronizar; ver sincronizar(). */
+    private static final Duration MARGEN_SINCRONIZACION = Duration.ofMinutes(1);
     private static final String CARPETA_FOTOS = "fichas/";
     private static final String MENSAJE_NO_EXISTE = "La ficha taxonómica solicitada no existe.";
     private static final String MENSAJE_FOTO_NO_EXISTE = "La foto solicitada no existe en esta ficha.";
     private static final String MENSAJE_FOTO_OBLIGATORIA = "Debes seleccionar una imagen.";
 
     private final TaxonRepository taxonRepository;
+    private final DeletedTaxonRepository deletedTaxonRepository;
     private final TaxonMapper taxonMapper;
-    private final ImageValidator imageValidator;
-    private final StorageService storageService;
+    private final PhotoStorage photoStorage;
     private final TaxonProperties propiedades;
 
     /**
@@ -66,8 +77,8 @@ public class TaxonService {
         if (archivos.size() > propiedades.fotosMaximas()) {
             throw maximoDeFotos();
         }
-        List<ValidatedImage> fotos = archivos.stream()
-                .map(archivo -> imageValidator.validar(archivo, MENSAJE_FOTO_OBLIGATORIA))
+        List<ProcessedImage> fotos = archivos.stream()
+                .map(archivo -> photoStorage.preparar(archivo, MENSAJE_FOTO_OBLIGATORIA))
                 .toList();
 
         Taxon ficha = taxonMapper.aEntidad(solicitud);
@@ -96,7 +107,7 @@ public class TaxonService {
         if (ficha.getFotos().size() >= propiedades.fotosMaximas()) {
             throw maximoDeFotos();
         }
-        agregar(ficha, imageValidator.validar(archivo, MENSAJE_FOTO_OBLIGATORIA));
+        agregar(ficha, photoStorage.preparar(archivo, MENSAJE_FOTO_OBLIGATORIA));
         ficha.setFechaActualizacion(Instant.now());
         return aDto(taxonRepository.saveAndFlush(ficha));
     }
@@ -118,22 +129,55 @@ public class TaxonService {
         ficha.getFotos().remove(foto);
         ficha.setFechaActualizacion(Instant.now());
         taxonRepository.saveAndFlush(ficha);
-        alConfirmar(() -> storageService.eliminar(foto.getFotoClave()));
+        photoStorage.eliminarAlConfirmar(foto.getFotoClave(), foto.getMiniaturaClave());
     }
 
     public TaxonDto obtenerPorId(UUID id) {
         return aDto(buscar(id));
     }
 
-    /** Listado completo sin filtros; el listado público por categoría es la HU-10. */
-    public List<TaxonDto> listar(TaxonCategory categoria) {
-        Sort order = Sort.by("vernacularName");
-        List<Taxon> fichas = categoria == null
-            ? taxonRepository.findAll(order)
-            : taxonRepository.findByCategoria(categoria, order);
-        return fichas.stream()
-            .map(this::aDto)
-            .toList();
+    /**
+     * HU-10 y HU-21. Pagina en la base de datos: por nombre común, en el orden alfabético español que da la
+     * intercalación de la columna (V16), y por id para que el orden sea estable entre páginas.
+     */
+    public PageResponse<TaxonDto> listar(TaxonCategory categoria, int pagina, int tamano) {
+        PageRequest paginacion = PageRequest.of(Math.max(pagina, 0), Math.clamp(tamano, 1, TAMANO_MAXIMO_PAGINA),
+                ORDEN_ALFABETICO);
+        Page<Taxon> fichas = categoria == null
+                ? taxonRepository.findAll(paginacion)
+                : taxonRepository.findByCategoria(categoria, paginacion);
+        return PageResponse.de(fichas, this::aDto);
+    }
+
+    /**
+     * HU-21. Sin fecha devuelve todas las fichas; con fecha, las creadas o modificadas desde entonces y los ids de
+     * las eliminadas.
+     * <p>
+     * La fecha de modificación se asigna antes de confirmar la transacción: una edición que se confirma justo
+     * después de esta lectura puede quedar con una fecha anterior a fechaSincronizacion, y el cliente no la vería
+     * nunca. Por eso se repasa un margen hacia atrás; repetir una ficha no hace daño porque el cliente la guarda por
+     * id. REPEATABLE_READ hace que las dos consultas vean el mismo estado, así una ficha borrada entre ambas no
+     * aparece a la vez en las dos listas.
+     */
+    @Transactional(readOnly = true, isolation = Isolation.REPEATABLE_READ)
+    public TaxonSyncResponse sincronizar(Instant modificadoDesde) {
+        Instant fechaSincronizacion = Instant.now().truncatedTo(ChronoUnit.MICROS);
+        if (modificadoDesde == null) {
+            return new TaxonSyncResponse(fechaSincronizacion, true,
+                    aDtos(taxonRepository.findAll(ORDEN_SINCRONIZACION)), List.of());
+        }
+        Instant desde = acotar(modificadoDesde, fechaSincronizacion).minus(MARGEN_SINCRONIZACION);
+        return new TaxonSyncResponse(fechaSincronizacion, false,
+                aDtos(taxonRepository.findByFechaActualizacionGreaterThanEqual(desde, ORDEN_SINCRONIZACION)),
+                deletedTaxonRepository.idsEliminadosDesde(desde));
+    }
+
+    /** Una fecha anterior a 1970 o futura no viene del servidor; se acota para que la consulta no falle. */
+    private static Instant acotar(Instant fecha, Instant ahora) {
+        if (fecha.isBefore(Instant.EPOCH)) {
+            return Instant.EPOCH;
+        }
+        return fecha.isAfter(ahora) ? ahora : fecha;
     }
 
     private Taxon buscar(UUID id) {
@@ -142,37 +186,15 @@ public class TaxonService {
     }
 
     /** Agrega la foto después de la última; las posiciones pueden tener huecos tras eliminar fotos. */
-    private void agregar(Taxon ficha, ValidatedImage foto) {
+    private void agregar(Taxon ficha, ProcessedImage foto) {
         int posicion = ficha.getFotos().stream().mapToInt(TaxonPhoto::getPosicion).max().orElse(-1) + 1;
+        StoredPhoto guardada = photoStorage.subir(CARPETA_FOTOS, foto);
         ficha.getFotos().add(TaxonPhoto.builder()
                 .ficha(ficha)
-                .fotoClave(subirFoto(foto))
+                .fotoClave(guardada.clave())
+                .miniaturaClave(guardada.miniaturaClave())
                 .posicion(posicion)
                 .build());
-    }
-
-    /** Sube la foto y programa su borrado si la transacción no llega a confirmarse. */
-    private String subirFoto(ValidatedImage foto) {
-        String clave = CARPETA_FOTOS + UUID.randomUUID() + "." + foto.tipo().extension();
-        storageService.subir(clave, foto.contenido(), foto.tipo().tipoContenido());
-        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-            @Override
-            public void afterCompletion(int estado) {
-                if (estado != STATUS_COMMITTED) {
-                    storageService.eliminar(clave);
-                }
-            }
-        });
-        return clave;
-    }
-
-    private static void alConfirmar(Runnable accion) {
-        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-            @Override
-            public void afterCommit() {
-                accion.run();
-            }
-        });
     }
 
     private static DuplicateResourceException nombreDuplicado(String scientificName) {
@@ -184,9 +206,14 @@ public class TaxonService {
                 "La ficha ya tiene el máximo de " + propiedades.fotosMaximas() + " fotos.");
     }
 
+    private List<TaxonDto> aDtos(List<Taxon> fichas) {
+        return fichas.stream().map(this::aDto).toList();
+    }
+
     private TaxonDto aDto(Taxon ficha) {
         List<TaxonPhotoDto> fotos = ficha.getFotos().stream()
-                .map(foto -> taxonMapper.aFotoDto(foto, storageService.urlPublica(foto.getFotoClave())))
+                .map(foto -> taxonMapper.aFotoDto(foto, photoStorage.url(foto.getFotoClave()),
+                        photoStorage.urlMiniatura(foto.getFotoClave(), foto.getMiniaturaClave())))
                 .toList();
         return taxonMapper.aDto(ficha, fotos);
     }

@@ -16,7 +16,6 @@ import com.orquidea.api.model.User;
 import com.orquidea.api.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 
-import org.springframework.data.domain.Sort;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -44,9 +43,9 @@ public class AdministratorService {
 
     /** Lista las cuentas con acceso de administración (ADMINISTRADOR y SUPERADMINISTRADOR), habilitadas o no. */
     public List<AdministratorDto> listar() {
-        return userRepository.findByRolIn(
-                List.of(Role.SUPERADMINISTRADOR, Role.ADMINISTRADOR), Sort.by("nombre", "apellido"))
+        return userRepository.findByRolIn(List.of(Role.SUPERADMINISTRADOR, Role.ADMINISTRADOR))
             .stream()
+            .sorted(AlphabeticalOrder.por(User::getNombre).thenComparing(AlphabeticalOrder.por(User::getApellido)))
             .map(administratorMapper::aDto)
             .toList();
     }

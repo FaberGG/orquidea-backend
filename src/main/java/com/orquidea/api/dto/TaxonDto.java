@@ -53,6 +53,10 @@ public class TaxonDto {
             example = "http://localhost:9000/orquidea/fichas/5b0c7f0e.jpg")
     private String urlFoto;
 
+    @Schema(description = "URL pública de la miniatura de la foto principal, para los listados; igual a fotos[0].urlMiniatura",
+            example = "http://localhost:9000/orquidea/fichas/miniaturas/5b0c7f0e.jpg")
+    private String urlMiniatura;
+
     @Schema(description = "Fotos de la ficha en orden de carga; la primera es la principal")
     private List<TaxonPhotoDto> fotos;
 

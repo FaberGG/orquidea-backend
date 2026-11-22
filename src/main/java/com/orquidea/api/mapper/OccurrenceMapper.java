@@ -9,10 +9,11 @@ import org.mapstruct.Mapping;
 @Mapper(componentModel = "spring")
 public interface OccurrenceMapper {
 
-    /** La URL de la foto depende del almacenamiento, por eso llega aparte. */
+    /** Las URLs de la foto dependen del almacenamiento, por eso llegan aparte. */
     @Mapping(target = "urlFoto", source = "urlFoto")
+    @Mapping(target = "urlMiniatura", source = "urlMiniatura")
     @Mapping(target = "recordedBy", source = "reporte.recordedBy")
-    OccurrenceDto aDto(Occurrence reporte, String urlFoto);
+    OccurrenceDto aDto(Occurrence reporte, String urlFoto, String urlMiniatura);
 
     /** Del autor solo se expone el nombre, nunca el correo. */
     default String nombreDe(User autor) {

@@ -2,7 +2,6 @@ package com.orquidea.api.repository;
 
 import com.orquidea.api.model.Role;
 import com.orquidea.api.model.User;
-import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.Collection;
@@ -18,7 +17,7 @@ public interface UserRepository extends JpaRepository<User, UUID> {
 
     Optional<User> findByIdAndRolIn(UUID id, Collection<Role> roles);
 
-    List<User> findByRolIn(Collection<Role> roles, Sort orden);
+    List<User> findByRolIn(Collection<Role> roles);
     
     boolean existsByRol(Role rol);
 

@@ -8,25 +8,20 @@ import com.orquidea.api.exception.ResourceNotFoundException;
 import com.orquidea.api.mapper.StationMapper;
 import com.orquidea.api.model.Station;
 import com.orquidea.api.model.Taxon;
+import com.orquidea.api.model.TaxonPhoto;
 import com.orquidea.api.repository.StationRepository;
 import com.orquidea.api.repository.TaxonRepository;
-import com.orquidea.api.storage.ImageValidator;
-import com.orquidea.api.storage.ImageValidator.ValidatedImage;
-import com.orquidea.api.storage.StorageService;
+import com.orquidea.api.storage.PhotoStorage;
+import com.orquidea.api.storage.ProcessedImage;
+import com.orquidea.api.storage.StoredPhoto;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.transaction.support.TransactionSynchronization;
-import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
-import java.text.Collator;
-import java.util.Comparator;
 import java.util.List;
-import java.util.Locale;
 import java.util.UUID;
 
 /**
@@ -43,18 +38,16 @@ public class StationService {
     private static final String MENSAJE_FICHA_NO_EXISTE = "Alguna de las fichas asociadas no existe.";
     /** Decimales que guarda la base de datos (NUMERIC(9, 6)), unos 10 cm de precisión. */
     private static final int DECIMALES_COORDENADAS = 6;
-    /** Alfabético en español: sin distinguir mayúsculas ni tildes ("Águila" antes que "Azulejo"). */
-    private static final Collator ORDEN_ALFABETICO = Collator.getInstance(Locale.forLanguageTag("es"));
 
     private final StationRepository stationRepository;
     private final TaxonRepository taxonRepository;
     private final StationMapper stationMapper;
-    private final ImageValidator imageValidator;
-    private final StorageService storageService;
+    private final PhotoStorage photoStorage;
 
     /** Ordenadas por nombre y sin paginar: el mapa las muestra todas. */
     public List<StationDto> listar() {
-        return stationRepository.findAll(Sort.by("nombre")).stream()
+        return stationRepository.findAll().stream()
+                .sorted(AlphabeticalOrder.por(Station::getNombre))
                 .map(this::aDto)
                 .toList();
     }
@@ -66,12 +59,12 @@ public class StationService {
     /** HU-13, escenarios 1 y 4. Valida todo antes de subir la foto, para no subir archivos por errores del usuario. */
     @Transactional
     public StationDto crear(StationRequest solicitud) {
-        ValidatedImage foto = imageValidator.validar(solicitud.getFoto(), StationRequest.MENSAJE_OBLIGATORIOS);
+        ProcessedImage foto = photoStorage.preparar(solicitud.getFoto(), StationRequest.MENSAJE_OBLIGATORIOS);
         List<Taxon> fichas = buscarFichas(solicitud.getFichaIds());
 
         Station estacion = stationMapper.aEntidad(solicitud);
         copiarDatos(solicitud, estacion, fichas);
-        estacion.setFotoClave(subirFoto(foto));
+        asignarFoto(estacion, photoStorage.subir(CARPETA_FOTOS, foto));
         return aDto(stationRepository.saveAndFlush(estacion));
     }
 
@@ -83,17 +76,16 @@ public class StationService {
     public StationDto actualizar(UUID id, StationRequest solicitud) {
         Station estacion = buscar(id);
         MultipartFile archivo = solicitud.getFoto();
-        ValidatedImage fotoNueva = archivo == null || archivo.isEmpty()
+        ProcessedImage fotoNueva = archivo == null || archivo.isEmpty()
                 ? null
-                : imageValidator.validar(archivo, StationRequest.MENSAJE_OBLIGATORIOS);
+                : photoStorage.preparar(archivo, StationRequest.MENSAJE_OBLIGATORIOS);
         List<Taxon> fichas = buscarFichas(solicitud.getFichaIds());
 
         stationMapper.actualizar(solicitud, estacion);
         copiarDatos(solicitud, estacion, fichas);
         if (fotoNueva != null) {
-            String fotoAnterior = estacion.getFotoClave();
-            estacion.setFotoClave(subirFoto(fotoNueva));
-            alConfirmar(() -> storageService.eliminar(fotoAnterior));
+            photoStorage.eliminarAlConfirmar(estacion.getFotoClave(), estacion.getMiniaturaClave());
+            asignarFoto(estacion, photoStorage.subir(CARPETA_FOTOS, fotoNueva));
         }
         return aDto(stationRepository.saveAndFlush(estacion));
     }
@@ -104,7 +96,7 @@ public class StationService {
         Station estacion = buscar(id);
         stationRepository.delete(estacion);
         stationRepository.flush();
-        alConfirmar(() -> storageService.eliminar(estacion.getFotoClave()));
+        photoStorage.eliminarAlConfirmar(estacion.getFotoClave(), estacion.getMiniaturaClave());
     }
 
     private Station buscar(UUID id) {
@@ -142,41 +134,28 @@ public class StationService {
         return coordenada.setScale(DECIMALES_COORDENADAS, RoundingMode.HALF_UP);
     }
 
-    /** Sube la foto y programa su borrado si la transacción no llega a confirmarse. */
-    private String subirFoto(ValidatedImage foto) {
-        String clave = CARPETA_FOTOS + UUID.randomUUID() + "." + foto.tipo().extension();
-        storageService.subir(clave, foto.contenido(), foto.tipo().tipoContenido());
-        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-            @Override
-            public void afterCompletion(int estado) {
-                if (estado != STATUS_COMMITTED) {
-                    storageService.eliminar(clave);
-                }
-            }
-        });
-        return clave;
-    }
-
-    private static void alConfirmar(Runnable accion) {
-        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-            @Override
-            public void afterCommit() {
-                accion.run();
-            }
-        });
+    private static void asignarFoto(Station estacion, StoredPhoto foto) {
+        estacion.setFotoClave(foto.clave());
+        estacion.setMiniaturaClave(foto.miniaturaClave());
     }
 
     /** Las fichas van por nombre común; se ordenan aquí para que la respuesta al guardar coincida con la consulta. */
     private StationDto aDto(Station estacion) {
         List<StationTaxonDto> fichas = estacion.getFichas().stream()
-                .sorted(Comparator.comparing(Taxon::getVernacularName, ORDEN_ALFABETICO))
-                .map(ficha -> stationMapper.aFichaDto(ficha, urlFotoPrincipal(ficha)))
+                .sorted(AlphabeticalOrder.por(Taxon::getVernacularName))
+                .map(this::aFichaDto)
                 .toList();
-        return stationMapper.aDto(estacion, storageService.urlPublica(estacion.getFotoClave()), fichas);
+        return stationMapper.aDto(estacion, photoStorage.url(estacion.getFotoClave()),
+                photoStorage.urlMiniatura(estacion.getFotoClave(), estacion.getMiniaturaClave()), fichas);
     }
 
     /** La primera foto de la ficha es la principal (HU-7, ajuste); una ficha siempre conserva al menos una. */
-    private String urlFotoPrincipal(Taxon ficha) {
-        return ficha.getFotos().isEmpty() ? null : storageService.urlPublica(ficha.getFotos().get(0).getFotoClave());
+    private StationTaxonDto aFichaDto(Taxon ficha) {
+        if (ficha.getFotos().isEmpty()) {
+            return stationMapper.aFichaDto(ficha, null, null);
+        }
+        TaxonPhoto principal = ficha.getFotos().get(0);
+        return stationMapper.aFichaDto(ficha, photoStorage.url(principal.getFotoClave()),
+                photoStorage.urlMiniatura(principal.getFotoClave(), principal.getMiniaturaClave()));
     }
 }

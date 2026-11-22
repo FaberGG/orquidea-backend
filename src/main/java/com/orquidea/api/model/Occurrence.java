@@ -63,6 +63,10 @@ public class Occurrence {
     @Column(name = "foto_clave", length = 300)
     private String fotoClave;
 
+    /** Clave de la miniatura para los listados; null en las fotos subidas antes de las miniaturas. */
+    @Column(name = "miniatura_clave", length = 300)
+    private String miniaturaClave;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     private ReviewStatus estado;

@@ -7,6 +7,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 
+import java.util.List;
 import java.util.UUID;
 
 public interface OccurrenceRepository extends JpaRepository<Occurrence, UUID> {
@@ -14,4 +15,7 @@ public interface OccurrenceRepository extends JpaRepository<Occurrence, UUID> {
     /** Trae el autor en la misma consulta, porque el listado siempre lo muestra. */
     @EntityGraph(attributePaths = "recordedBy")
     Page<Occurrence> findByEstado(ReviewStatus estado, Pageable paginacion);
+
+    /** Reportes cuya foto se subió antes de las miniaturas y aún no se reprocesa. */
+    List<Occurrence> findByFotoClaveIsNotNullAndMiniaturaClaveIsNull();
 }

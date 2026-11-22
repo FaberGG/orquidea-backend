@@ -1,8 +1,10 @@
 package com.orquidea.api.controllers;
 
+import com.orquidea.api.dto.PageResponse;
 import com.orquidea.api.dto.TaxonDto;
 import com.orquidea.api.dto.ApiErrorResponse;
 import com.orquidea.api.dto.TaxonRequest;
+import com.orquidea.api.dto.TaxonSyncResponse;
 import com.orquidea.api.model.TaxonCategory;
 import com.orquidea.api.service.TaxonService;
 import com.orquidea.api.service.TaxonQrService;
@@ -23,14 +25,16 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
-import java.util.List;
+import java.time.Instant;
 import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/fichas-taxonomicas")
 @RequiredArgsConstructor
-@Tag(name = "Fichas taxonómicas", description = "Fichas de especies del humedal (HU-7, HU-8)")
+@Tag(name = "Fichas taxonómicas", description = "Fichas de especies del humedal (HU-7, HU-8, HU-10, HU-21)")
 public class TaxonController {
+
+    private static final String TAMANO_POR_DEFECTO = "20";
 
     private final TaxonService taxonService;
     private final TaxonQrService taxonQrService;
@@ -40,7 +44,8 @@ public class TaxonController {
     @Operation(summary = "Crear ficha taxonómica",
             description = "Solo ADMINISTRADOR o SUPERADMINISTRADOR. Formulario multipart con los datos y de 1 a 10 fotos "
                     + "en el campo 'fotos', repetido por archivo (jpg o png, máx. 10 MB cada una). Las fotos quedan en el "
-                    + "orden de envío y la primera es la principal del listado (urlFoto).")
+                    + "orden de envío y la primera es la principal del listado (urlFoto). Las fotos se guardan "
+                    + "optimizadas, sin metadatos y con una miniatura para los listados (ver docs/api/procesamiento-de-fotos.md).")
     @ApiResponse(responseCode = "201", description = "Ficha creada y publicada")
     @ApiResponse(responseCode = "400", description = "Debes completar todos los campos obligatorios. / Debes seleccionar una imagen. "
             + "/ El formato de la imagen no es válido.",
@@ -51,7 +56,8 @@ public class TaxonController {
             content = @Content(schema = @Schema(implementation = ApiErrorResponse.class)))
     @ApiResponse(responseCode = "409", description = "Ya existe una ficha con ese nombre científico / Más de 10 fotos",
             content = @Content(schema = @Schema(implementation = ApiErrorResponse.class)))
-    @ApiResponse(responseCode = "413", description = "La imagen supera el tamaño máximo",
+    @ApiResponse(responseCode = "413",
+            description = "La imagen supera el tamaño máximo (10 MB) o la resolución máxima (50 megapíxeles)",
             content = @Content(schema = @Schema(implementation = ApiErrorResponse.class)))
     public ResponseEntity<TaxonDto> crear(@Valid @ModelAttribute TaxonRequest solicitud) {
         TaxonDto ficha = taxonService.crear(solicitud);
@@ -86,7 +92,8 @@ public class TaxonController {
     @Operation(summary = "Agregar una foto a una ficha",
             description = "Solo ADMINISTRADOR o SUPERADMINISTRADOR. Formulario multipart con el campo 'foto' "
                     + "(jpg o png, máx. 10 MB). Cada ficha admite como máximo 10 fotos y la nueva queda al final. "
-                    + "Devuelve la ficha completa con su lista de fotos actualizada.")
+                    + "Devuelve la ficha completa con su lista de fotos actualizada. La foto se guarda "
+                    + "optimizada, sin metadatos y con una miniatura para los listados (ver docs/api/procesamiento-de-fotos.md).")
     @ApiResponse(responseCode = "201", description = "Foto agregada")
     @ApiResponse(responseCode = "400", description = "Debes seleccionar una imagen. / El formato de la imagen no es válido.",
             content = @Content(schema = @Schema(implementation = ApiErrorResponse.class)))
@@ -98,7 +105,8 @@ public class TaxonController {
             content = @Content(schema = @Schema(implementation = ApiErrorResponse.class)))
     @ApiResponse(responseCode = "409", description = "La ficha ya tiene el máximo de fotos",
             content = @Content(schema = @Schema(implementation = ApiErrorResponse.class)))
-    @ApiResponse(responseCode = "413", description = "La imagen supera el tamaño máximo",
+    @ApiResponse(responseCode = "413",
+            description = "La imagen supera el tamaño máximo (10 MB) o la resolución máxima (50 megapíxeles)",
             content = @Content(schema = @Schema(implementation = ApiErrorResponse.class)))
     public ResponseEntity<TaxonDto> agregarFoto(
             @PathVariable UUID id,
@@ -163,15 +171,39 @@ public class TaxonController {
     @GetMapping
     @SecurityRequirements
     @Operation(summary = "Listar fichas taxonómicas",
-        description = "Público. Ordenadas por nombre común. Con el parámetro categoria (AVE, PLANTA, INSECTO, MAMIFERO, REPTIL, ANFIBIO o HONGO) "
+        description = "Público. Paginado y en orden alfabético por nombre común (sin importar mayúsculas ni tildes). "
+            + "Con el parámetro categoria (AVE, PLANTA, INSECTO, MAMIFERO, REPTIL, ANFIBIO o HONGO) "
             + "devuelve solo las de ese listado; sin él, todas. Si la categoría no tiene fichas responde una "
-            + "lista vacía y el cliente muestra: 'Aún no hay especies registradas en esta categoría.'")
-    @ApiResponse(responseCode = "200", description = "Listado de fichas (vacío si no hay ninguna)")
+            + "página vacía y el cliente muestra: 'Aún no hay especies registradas en esta categoría.' "
+            + "Para descargar las fichas y usarlas sin conexión está /sincronizacion.")
+    @ApiResponse(responseCode = "200", description = "Página de fichas (vacía si no hay ninguna)")
     @ApiResponse(responseCode = "400", description = "El valor del parámetro 'categoria' no es válido.",
         content = @Content(schema = @Schema(implementation = ApiErrorResponse.class)))
-    public List<TaxonDto> listar(
+    public PageResponse<TaxonDto> listar(
         @Parameter(description = "Categoría a consultar; si se omite, se listan todas", example = "AVE")
-        @RequestParam(required = false) TaxonCategory categoria) {
-        return taxonService.listar(categoria);
+        @RequestParam(required = false) TaxonCategory categoria,
+        @Parameter(description = "Número de página, desde 0", example = "0") @RequestParam(defaultValue = "0") int pagina,
+        @Parameter(description = "Tamaño de página, máximo " + TaxonService.TAMANO_MAXIMO_PAGINA, example = "20")
+        @RequestParam(defaultValue = TAMANO_POR_DEFECTO) int tamano) {
+        return taxonService.listar(categoria, pagina, tamano);
+    }
+
+    @GetMapping("/sincronizacion")
+    @SecurityRequirements
+    @Operation(summary = "Sincronizar fichas para usarlas sin conexión",
+        description = "Público (HU-21). Sin 'modificadoDesde' devuelve todas las fichas (completa = true), para la "
+            + "primera descarga: la copia local se reemplaza entera. Con 'modificadoDesde' igual a la "
+            + "fechaSincronizacion de la respuesta anterior devuelve solo las fichas creadas o modificadas desde "
+            + "entonces (también al agregar o quitar fotos) y los ids de las eliminadas. El cliente guarda cada "
+            + "ficha por id, borra las de idsEliminados y conserva la nueva fechaSincronizacion. Puede repetir "
+            + "fichas ya recibidas. Las fotos se descargan aparte desde fotos[].url.")
+    @ApiResponse(responseCode = "200", description = "Fichas nuevas o modificadas e ids eliminados, o todas las fichas")
+    @ApiResponse(responseCode = "400", description = "El valor del parámetro 'modificadoDesde' no es válido.",
+        content = @Content(schema = @Schema(implementation = ApiErrorResponse.class)))
+    public TaxonSyncResponse sincronizar(
+        @Parameter(description = "fechaSincronizacion recibida en la sincronización anterior (ISO-8601 en UTC); "
+            + "se omite en la primera descarga", example = "2026-11-10T15:30:00.123456Z")
+        @RequestParam(required = false) Instant modificadoDesde) {
+        return taxonService.sincronizar(modificadoDesde);
     }
 }

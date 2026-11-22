@@ -20,7 +20,8 @@ public interface ComponentMapper {
     ComponentDto aDto(WetlandComponent componente, List<ComponentPhotoDto> fotosDto, boolean tieneContenido);
 
     @Mapping(target = "url", source = "url")
-    ComponentPhotoDto aFotoDto(WetlandComponentPhoto foto, String url);
+    @Mapping(target = "urlMiniatura", source = "urlMiniatura")
+    ComponentPhotoDto aFotoDto(WetlandComponentPhoto foto, String url, String urlMiniatura);
 
     /** Copia el texto editable; el tipo, las fotos y la fecha los maneja el servicio. */
     @Mapping(target = "tipo", ignore = true)
