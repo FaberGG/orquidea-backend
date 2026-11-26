@@ -50,6 +50,8 @@ public class SecurityConfig {
                 .sessionManagement(sesion -> sesion.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(rutas -> rutas
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+                        // Health check para Render y Fly.io
+                        .requestMatchers("/actuator/health").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/autenticacion/iniciar-sesion").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/fichas-taxonomicas/*/qr").authenticated()
                         .requestMatchers(HttpMethod.GET, "/api/fichas-taxonomicas", "/api/fichas-taxonomicas/**").permitAll()

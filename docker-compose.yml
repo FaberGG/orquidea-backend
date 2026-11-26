@@ -1,3 +1,4 @@
+
 # Uso:
 #   docker compose up -d                  -> db, pgadmin y storage (para correr la API desde el IDE)
 #   docker compose --profile app up -d    -> también la API en contenedor
@@ -10,20 +11,32 @@ services:
     container_name: orquidea-api
     profiles: ["app"]
     ports:
-      - "${PUERTO_API:-8080}:8080"
+      - "${PORT:-${PUERTO_API:-8080}}:${PORT:-${PUERTO_API:-8080}}"
     environment:
-      - SERVER_PORT=8080
-      - SPRING_DATASOURCE_URL=jdbc:postgresql://db:5432/${POSTGRES_DB:?Falta .env, copie .env.example a .env}
-      - SPRING_DATASOURCE_USERNAME=${POSTGRES_USER}
-      - SPRING_DATASOURCE_PASSWORD=${POSTGRES_PASSWORD}
+      # Puerto configurable para Render, Fly.io y Docker local
+      - PORT=${PORT:-${PUERTO_API:-8080}}
+
+      # Base de datos PostgreSQL
+      - POSTGRES_URL=${POSTGRES_URL:-jdbc:postgresql://db:5432/${POSTGRES_DB:-orquidea_db}}
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_POOL_MAXIMO=${POSTGRES_POOL_MAXIMO:-10}
+
+      # JWT
       - JWT_SECRETO=${JWT_SECRETO}
       - JWT_EXPIRACION=${JWT_EXPIRACION:-8h}
+
+      # Superadministrador
       - SUPERADMIN_NOMBRE=${SUPERADMIN_NOMBRE:-Super}
       - SUPERADMIN_APELLIDO=${SUPERADMIN_APELLIDO:-Administrador}
       - SUPERADMIN_CORREO=${SUPERADMIN_CORREO}
       - SUPERADMIN_CONTRASENA=${SUPERADMIN_CONTRASENA}
+
+      # Administradores
       - ADMINISTRADORES_LIMITE=${ADMINISTRADORES_LIMITE:-3}
-      # Dentro de la red de Docker la API habla con "storage"; el navegador sigue usando localhost
+
+      # Almacenamiento S3
+      # Dentro de Docker la API utiliza el nombre del servicio storage.
       - STORAGE_ENDPOINT=http://storage:9000
       - STORAGE_REGION=${STORAGE_REGION:-us-east-1}
       - STORAGE_ACCESS_KEY=${STORAGE_ACCESS_KEY}
@@ -31,12 +44,22 @@ services:
       - STORAGE_BUCKET=${STORAGE_BUCKET:-orquidea}
       - STORAGE_URL_PUBLICA=${STORAGE_URL_PUBLICA}
       - STORAGE_CREAR_BUCKET=${STORAGE_CREAR_BUCKET:-true}
+
+      # Optimización de imágenes
       - STORAGE_IMAGEN_ANCHO_MAXIMO=${STORAGE_IMAGEN_ANCHO_MAXIMO:-1600}
       - STORAGE_IMAGEN_ANCHO_MINIATURA=${STORAGE_IMAGEN_ANCHO_MINIATURA:-480}
       - STORAGE_IMAGEN_CALIDAD_JPEG=${STORAGE_IMAGEN_CALIDAD_JPEG:-0.85}
+      - STORAGE_IMAGEN_MEGAPIXELES_MAXIMOS=${STORAGE_IMAGEN_MEGAPIXELES_MAXIMOS:-50}
+      - STORAGE_IMAGEN_PROCESAMIENTOS_SIMULTANEOS=${STORAGE_IMAGEN_PROCESAMIENTOS_SIMULTANEOS:-2}
       - STORAGE_REPROCESAR_FOTOS=${STORAGE_REPROCESAR_FOTOS:-no}
+
+      # Swagger
+      - SWAGGER_HABILITADO=${SWAGGER_HABILITADO:-true}
+
+      # Correo mediante Resend
       - RESEND_API_KEY=${RESEND_API_KEY:-}
       - MAIL_REMITENTE=${MAIL_REMITENTE:-}
+
     depends_on:
       db:
         condition: service_healthy
@@ -64,7 +87,8 @@ services:
     networks:
       - orquidea-network
 
-  # Almacenamiento S3 local (reemplaza a Cloudflare R2 en desarrollo). Consola web en el puerto 9001.
+  # Almacenamiento S3 local (reemplaza a Cloudflare R2 en desarrollo).
+  # Consola web en el puerto 9001.
   storage:
     image: rustfs/rustfs:1.0.0
     container_name: orquidea-storage
