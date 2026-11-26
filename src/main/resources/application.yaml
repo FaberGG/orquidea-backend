@@ -5,9 +5,11 @@ spring:
     # Variables locales de cada desarrollador (copiar .env.example a .env). En contenedores se usan variables de entorno.
     import: optional:file:.env[.properties]
   datasource:
-    url: jdbc:postgresql://localhost:${POSTGRES_PUERTO:5432}/${POSTGRES_DB:orquidea_db}
+    url: ${POSTGRES_URL:jdbc:postgresql://localhost:${POSTGRES_PUERTO:5432}/${POSTGRES_DB:orquidea_db}}
     username: ${POSTGRES_USER:orquidea_user}
     password: ${POSTGRES_PASSWORD:}
+    hikari:
+      maximum-pool-size: ${POSTGRES_POOL_MAXIMO:10}
   jpa:
     open-in-view: false
     hibernate:
@@ -23,10 +25,12 @@ spring:
       # Al correr desde el IDE levanta db y pgadmin, y los deja encendidos al detener la app.
       lifecycle-management: start-only
 
+  
+
 server:
-  port: ${PUERTO_API:8080}
+  port: ${PORT:${PUERTO_API:8080}}
+  forward-headers-strategy: framework
   tomcat:
-    # Permite leer (y rechazar con 413) subidas algo mayores al límite en vez de cortar la conexión
     max-swallow-size: 20MB
 
 app:
@@ -52,8 +56,8 @@ app:
       ancho-miniatura: ${STORAGE_IMAGEN_ANCHO_MINIATURA:480}
       calidad-jpeg: ${STORAGE_IMAGEN_CALIDAD_JPEG:0.85}
       # Una foto de 50 MP ocupa unos 200 MB de memoria mientras se procesa
-      megapixeles-maximos: 50
-      procesamientos-simultaneos: 2
+      megapixeles-maximos: ${STORAGE_IMAGEN_MEGAPIXELES_MAXIMOS:50}
+      procesamientos-simultaneos: ${STORAGE_IMAGEN_PROCESAMIENTOS_SIMULTANEOS:2}
     # Fotos subidas antes de la optimización: no, simular (solo informa el ahorro en el log) o aplicar
     reprocesar-fotos: ${STORAGE_REPROCESAR_FOTOS:no}
   superadministrador:
@@ -77,3 +81,20 @@ app:
     vigencia: 15m
     intentos-maximos: 5
     espera-reenvio: 1m
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      show-details: never
+      probes:
+        enabled: false
+
+springdoc:
+  api-docs:
+    enabled: ${SWAGGER_HABILITADO:true}
+  swagger-ui:
+    enabled: ${SWAGGER_HABILITADO:true}
